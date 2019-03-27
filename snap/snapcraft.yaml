@@ -1,0 +1,31 @@
+name: selective-checkout
+title: The `selective-checkout` Stage Snap
+summary: Checkout the tagged release revision if it isn't in stable channel
+description: |
+  This stage snap features an override-pull scriptlet that will only
+  build development snapshots snaps if the latest tagged release has
+  been promoted to the stable channel.  Refer the following snapcraft
+  forum topic for a possible solution of this problem:
+
+      _forum_topic_title_
+      _forum_topic_url_
+
+license: WTFPL
+version: git
+
+base: core18
+grade: stable
+confinement: strict
+
+# We only ship scriptlets here, don't do duplicate work
+# Build on s390x architecture as the build machine is least busy
+architectures:
+- build-on: s390x
+  run-on: all
+
+parts:
+  scriptlets:
+    source: snap/local/scriptlets
+    plugin: dump
+    organize:
+      '*': scriptlets/

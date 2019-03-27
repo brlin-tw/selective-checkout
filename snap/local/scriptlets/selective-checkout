@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# This scriptlet re-implements the pull step that will only build
+# development snapshots snaps if the latest tagged release has been
+# promoted to the stable channel.  This ensures that there's always
+# a revision of the stable release snap available in the edge channel
+# for the publisher to promote to stable as currently the build
+# infrastructure only supports build on code push (but not new tagged
+# releases) at this time.
+#
+# This script is inspired from the snapcrafters adopted snaps workflow,
+# documented in the following forum topic:
+#
+#     The automatic build and pubish process of snaps owned by the Snapcrafters - doc - snapcraft.io
+#     https://forum.snapcraft.io/t/autopublishing-of-snapcrafters-organizations-snaps-how/7954/2
+#
+# Refer the following forum topic for a possible solution of this problem:
+#
+#     Proposal: Allow overriding the source-tag property for an one-time build in the build infrastructure - snapcraft - snapcraft.io
+#     https://forum.snapcraft.io/t/proposal-allow-overriding-the-source-tag-property-for-an-one-time-build-in-the-build-infrastructure/10303
+#
+# 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com> © 2018
+
+set \
+    -o errexit \
+    -o errtrace \
+    -o nounset \
+    -o pipefail
+
+for required_command in \
+    awk \
+    cut \
+    git \
+    sed \
+    sort \
+    tail; do
+    if ! command -v "${required_command}" >/dev/null; then
+        printf -- \
+            'Fatal: This script requires the "%s" command in your command search PATHs.\n' \
+            "${required_command}" \
+            >&2
+        exit 1
+    fi
+done
+
+init(){
+    # checkout_mode:
+    # - snapshot: Build as-is
+    # - release: Build the latest tagged release
+    # release_tag_pattern: We assume all tags contains dots or underscores release tags
+    local \
+        checkout_mode \
+        flag_force_snapshot=false \
+        flag_dry_run=false \
+        release_tag_pattern='*[._]*' \
+        snap_version
+
+    for commandline_argument in "${@}"; do
+        case "${commandline_argument}" in
+            # Force building development snapshot regardless the status of the snap
+            --force-snapshot)
+                flag_force_snapshot=true
+            ;;
+            # Enable execution tracing
+            --debug)
+                set -o xtrace
+            ;;
+            # Don't run snapcraftctl for testing purpose
+            --dry-run)
+                flag_dry_run=true
+            ;;
+            *)
+                printf -- \
+                    'selective-checkout: Error: Invalid command-line argument.\n' \
+                    >&2
+                exit 1
+            ;;
+        esac
+    done
+
+    if test "${flag_dry_run}" = false; then
+        snapcraftctl pull
+    fi
+
+    if test "${flag_force_snapshot}" = true; then
+        printf -- 'selective-checkout: Force building development snapshots\n' >&2
+        checkout_mode=snapshot
+    elif ! git describe &>/dev/null; then
+        printf -- 'selective-checkout: Build from source archive\n' >&2
+        checkout_mode=snapshot
+    elif ! git diff --quiet \
+        || ! git diff --staged --quiet; then
+        # If tracked files are modified
+        # or staging area not empty
+        printf -- 'selective-checkout: Working tree is dirty, building development snapshot with additional changes\n' >&2
+        checkout_mode=snapshot
+    elif ! \
+        git describe \
+            --match "${release_tag_pattern}" \
+            --tags \
+            >/dev/null; then
+        printf -- \
+            'Warning: No release tags found, assuming building from development snapshots.\n' \
+            1>&2
+        checkout_mode=snapshot
+    else
+        local \
+            all_release_tags \
+            last_release_tag \
+            last_release_version \
+            last_stable_release_on_the_snap_store
+
+        if ! test -v SNAPCRAFT_PROJECT_NAME; then
+            printf -- \
+                "selective-checkout: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
+                >&2
+            exit 1
+        fi
+
+        all_release_tags="$(
+            git tag \
+                --list \
+                "${release_tag_pattern}"
+        )"
+
+        # We stripped out the prefix 'v' here
+        last_release_tag="$(
+            sort --version-sort <<< "${all_release_tags}" \
+                | tail --lines=1
+        )"
+
+        # shellcheck disable=SC2001
+        last_release_version="$(
+            sed 's/^v//' <<< "${last_release_tag}"
+        )"
+
+        last_stable_release_on_the_snap_store="$(
+            snap info "${SNAPCRAFT_PROJECT_NAME}" \
+                | awk '$1 == "stable:" { print $2 }' \
+                | cut --delimiter=+ --fields=1
+        )"
+
+        # If the latest tagged release from the repository has not been
+        # released to the stable channel, build that tag instead of the
+        # development snapshot and publish it in the edge channel
+        if [ "${last_release_version}" != "${last_stable_release_on_the_snap_store}" ]; then
+            printf -- \
+                "selective-checkout: Last tagged release(%s) hasn't promoted to the stable channel(%s) on the Snap Store, building tagged release instead.\\n" \
+                "${last_release_version}" \
+                "${last_stable_release_on_the_snap_store}" \
+                >&2
+            checkout_mode=release
+        else
+            printf -- 'selective-checkout: Last tagged release is in the stable channel, building development snapshot\n' >&2
+            checkout_mode=snapshot
+        fi
+
+        unset \
+            all_release_tags \
+            last_release_version \
+            last_stable_release_on_the_snap_store
+    fi
+
+    case "${checkout_mode}" in
+        snapshot)
+            : # do nothing
+        ;;
+        release)
+            git checkout "${last_release_tag}"
+        ;;
+        *)
+            printf -- 'Error: Invalid checkout_mode selected.\n' >&2
+            exit 1
+        ;;
+    esac
+
+    if ! git describe &>/dev/null; then
+		# FIXME: Implement some heuristic instead of just give up here?
+        snap_version="unknown"
+    else
+        snap_version="$(
+            git \
+                describe \
+                --always \
+                --dirty \
+                --tags \
+            | sed s/^v//
+        )"
+    fi
+
+    printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
+        "${snap_version}" >&2
+    if test "${flag_dry_run}" = false; then
+        snapcraftctl \
+            set-version \
+            "${snap_version}"
+    fi
+
+    exit 0
+}
+
+init "${@}"
