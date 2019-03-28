@@ -84,7 +84,7 @@ init(){
     if test "${flag_force_snapshot}" = true; then
         printf -- 'selective-checkout: Force building development snapshots\n' >&2
         checkout_mode=snapshot
-    elif ! git describe &>/dev/null; then
+    elif ! git describe --always &>/dev/null; then
         printf -- 'selective-checkout: Build from source archive\n' >&2
         checkout_mode=snapshot
     elif ! git diff --quiet \
