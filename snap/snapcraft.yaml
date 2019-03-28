@@ -7,8 +7,8 @@ description: |
   been promoted to the stable channel.  Refer the following snapcraft
   forum topic for a possible solution of this problem:
 
-      _forum_topic_title_
-      _forum_topic_url_
+      Selective-checkout: Check out the tagged release revision if it isn't promoted to the stable channel - doc - snapcraft.io
+      https://forum.snapcraft.io/t/selective-checkout-check-out-the-tagged-release-revision-if-it-isnt-promoted-to-the-stable-channel/10617
 
 license: WTFPL
 version: git
