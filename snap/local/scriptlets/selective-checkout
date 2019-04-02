@@ -31,6 +31,7 @@ for required_command in \
     cut \
     git \
     sed \
+    snap \
     sort \
     tail; do
     if ! command -v "${required_command}" >/dev/null; then
