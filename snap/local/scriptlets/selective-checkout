@@ -133,8 +133,9 @@ init(){
             sed 's/^v//' <<< "${last_release_tag}"
         )"
 
+        # Allow the `snap info` command to fail when the snap isn't published to the stable channel
         last_stable_release_on_the_snap_store="$(
-            snap info "${SNAPCRAFT_PROJECT_NAME}" \
+            snap info "${SNAPCRAFT_PROJECT_NAME}" || true \
                 | awk '$1 == "stable:" { print $2 }' \
                 | cut --delimiter=+ --fields=1
         )"
