@@ -350,6 +350,7 @@ init(){
     local \
         checkout_mode \
         flag_dry_run=false \
+        flag_debug_tracing=false \
         flag_force_snapshot=false \
         release_tag_pattern='.*[._].*' \
         release_tag_prefix=v \
@@ -362,7 +363,7 @@ init(){
             case "${1}" in
                 # Enable execution tracing
                 --debug)
-                    set -o xtrace
+                    flag_debug_tracing=true
                 ;;
                 # Don't run snapcraftctl for testing purpose
                 --dry-run)
@@ -396,6 +397,10 @@ init(){
             shift 1
         fi
     done
+
+    if test "${flag_debug_tracing}" = true; then
+        set -o xtrace
+    fi
 
     if test "${flag_dry_run}" = false; then
         snapcraftctl pull
