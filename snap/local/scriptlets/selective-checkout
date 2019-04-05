@@ -29,7 +29,6 @@ set \
 for required_command in \
     awk \
     cut \
-    git \
     sed \
     snap \
     sort \
@@ -43,6 +42,317 @@ for required_command in \
     fi
 done
 
+vcs_detect(){
+    if test $# -ne 1; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local source_tree_root_dir="${1}"; shift 1
+
+    if test -e "${source_tree_root_dir}"/.git; then
+        printf git
+    elif test -e "${source_tree_root_dir}"/.hg; then
+        printf mercurial
+    elif test -e "${source_tree_root_dir}"/.svn; then
+        printf subversion
+    else
+        printf not_found
+    fi
+}
+
+# Ensure depending software is available before using them
+vcs_check_runtime_dependencies(){
+    if test $# -ne 1; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r source_tree_root_dir="${1}"; shift 1
+
+    case "$(vcs_detect "${source_tree_root_dir}")" in
+        git)
+            if ! command -v git &>/dev/null; then
+                # Markdown code markup is not Bash tilde expression
+                # shellcheck disable=SC2016
+                printf -- \
+                    '%s: Error: `git` command not found in the command search PATHs.\n' \
+                    "${FUNCNAME[0]}" \
+                    >&2
+                return 1
+            fi
+        ;;
+        mercurial)
+            if ! command -v hg &>/dev/null; then
+                # Markdown code markup is not Bash tilde expression
+                # shellcheck disable=SC2016
+                printf -- \
+                    '%s: Error: `hg` command not found in the command search PATHs.\n' \
+                    "${FUNCNAME[0]}" \
+                    >&2
+                return 1
+            fi
+        ;;
+        subversion)
+            if ! command -v svn &>/dev/null; then
+                # Markdown code markup is not Bash tilde expression
+                # shellcheck disable=SC2016
+                printf -- \
+                    '%s: Error: `svn` command not found in the command search PATHs.\n' \
+                    "${FUNCNAME[0]}" \
+                    >&2
+                return 1
+            fi
+        ;;
+        *)
+            printf -- \
+                '%s: Warning: Unknown VCS type, assuming dirty.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 0
+        ;;
+    esac
+}
+
+vcs_is_dirty(){
+    if test $# -ne 1; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r source_tree_root_dir="${1}"; shift 1
+
+    case "$(vcs_detect "${source_tree_root_dir}")" in
+        git)
+            # If tracked files are modified
+            # or staging area not empty
+            if ! \
+                git -C "${source_tree_root_dir}" diff \
+                    --quiet \
+                || ! \
+                git -C "${source_tree_root_dir}"  diff \
+                    --staged \
+                    --quiet; then
+                return 0
+            else
+                return 1
+            fi
+        ;;
+        mercurial)
+            # NOTE:
+            # The existence of untracked files is not consider dirty,
+            # imitating Git's `--dirty` option of the describe
+            # subcommand
+            if test -n "$(
+                hg --cwd "${source_tree_root_dir}" status \
+                    --added \
+                    --deleted \
+                    --modified \
+                    --removed
+            )"; then
+                return 0
+            else
+                return 1
+            fi
+        ;;
+        subversion)
+            printf -- \
+                '%s: Warning: Unimplemented VCS type, assuming dirty.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 0
+        ;;
+        *)
+            printf -- \
+                '%s: Warning: Unknown VCS type, assuming dirty.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 0
+        ;;
+    esac
+}
+
+vcs_has_release_tags() {
+    if test $# -ne 2; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r source_tree_root_dir="${1}"; shift 1
+
+    # Pattern to match a release tag, in extended regular expression(ERE)
+    local -r release_tag_pattern="${1}"; shift 1
+
+    case "$(vcs_detect "${source_tree_root_dir}")" in
+        git)
+            if git -C "${source_tree_root_dir}" tag \
+                --list \
+                | grep \
+                    --extended-regexp \
+                    --quiet \
+                    "${release_tag_pattern}"; then
+                return 0
+            else
+                return 1
+            fi
+        ;;
+        mercurial)
+            if hg --cwd "${source_tree_root_dir}" tags \
+                | grep \
+                    --extended-regexp \
+                    --quiet \
+                    "${release_tag_pattern}"; then
+                return 0
+            else
+                return 1
+            fi
+        ;;
+        subversion)
+            printf -- \
+                '%s: Warning: Unimplemented VCS type, assuming no release tags found.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 1
+        ;;
+        *)
+            printf -- \
+                '%s: Warning: Unknown VCS type, assuming no release tags found.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 1
+        ;;
+    esac
+}
+
+vcs_query_release_tags(){
+    if test $# -ne 2; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r source_tree_root_dir="${1}"; shift 1
+
+    # Pattern to match a release tag, in extended regular expression(ERE)
+    local -r release_tag_pattern="${1}"; shift 1
+
+    case "$(vcs_detect "${source_tree_root_dir}")" in
+        git)
+            if git -C "${source_tree_root_dir}" tag \
+                --list \
+                | grep \
+                    --extended-regexp \
+                    "${release_tag_pattern}"; then
+                return 0
+            else
+                return 1
+            fi
+        ;;
+        mercurial)
+            if hg --cwd "${source_tree_root_dir}" tags \
+                --quiet \
+                | grep \
+                    --extended-regexp \
+                    "${release_tag_pattern}"; then
+                return 0
+            else
+                return 1
+            fi
+        ;;
+        subversion)
+            printf -- \
+                '%s: Warning: Unimplemented VCS type, assuming no release tags found.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 1
+        ;;
+        *)
+            printf -- \
+                '%s: Warning: Unknown VCS type, assuming no release tags found.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 1
+        ;;
+    esac
+}
+
+vcs_checkout(){
+    if test $# -ne 2; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r source_tree_root_dir="${1}"; shift 1
+    local -r revision_to_be_checked_out="${1}"; shift 1
+
+    case "$(vcs_detect "${source_tree_root_dir}")" in
+        git)
+            git -C "${source_tree_root_dir}" checkout \
+                "${revision_to_be_checked_out}"
+            return 0
+        ;;
+        mercurial)
+            hg --cwd "${source_tree_root_dir}" checkout \
+                --rev "${revision_to_be_checked_out}"
+            return 0
+        ;;
+        subversion)
+            printf -- \
+                '%s: Warning: Unimplemented VCS type, not doing anything.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 1
+        ;;
+        *)
+            printf -- \
+                '%s: Warning: Unknown VCS type, not doing anything.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            return 1
+        ;;
+    esac
+}
+
+vcs_describe_revision(){
+    if test $# -ne 1; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r source_tree_root_dir="${1}"; shift 1
+
+    case "$(vcs_detect "${source_tree_root_dir}")" in
+        git)
+            git describe \
+                --always \
+                --dirty \
+                --tags
+            return 0
+        ;;
+        mercurial)
+            hg --cwd "${source_tree_root_dir}" log \
+                --rev . \
+                --template "{latesttag}{sub('^-0-.*', '', '-{latesttagdistance}-m{shortest(node, 7)}')}"
+            return 0
+        ;;
+        subversion)
+            printf -- \
+                '%s: Warning: Unimplemented VCS type.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            printf unknown
+            return 0
+        ;;
+        *)
+            printf -- \
+                '%s: Warning: Unknown VCS type.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            printf unknown
+            return 0
+        ;;
+    esac
+}
+
 init(){
     # checkout_mode:
     # - snapshot: Build as-is
@@ -52,7 +362,7 @@ init(){
         checkout_mode \
         flag_force_snapshot=false \
         flag_dry_run=false \
-        release_tag_pattern='*[._]*' \
+        release_tag_pattern='.*[._].*' \
         snap_version
 
     for commandline_argument in "${@}"; do
@@ -82,23 +392,24 @@ init(){
         snapcraftctl pull
     fi
 
+    vcs_check_runtime_dependencies \
+        "${PWD}"
+
     if test "${flag_force_snapshot}" = true; then
         printf -- 'selective-checkout: Force building development snapshots\n' >&2
         checkout_mode=snapshot
-    elif ! git describe --always &>/dev/null; then
+    elif test "$(vcs_detect "${PWD}")" = not_found; then
         printf -- 'selective-checkout: Build from source archive\n' >&2
         checkout_mode=snapshot
-    elif ! git diff --quiet \
-        || ! git diff --staged --quiet; then
+    elif vcs_is_dirty "${PWD}"; then
         # If tracked files are modified
         # or staging area not empty
         printf -- 'selective-checkout: Working tree is dirty, building development snapshot with additional changes\n' >&2
         checkout_mode=snapshot
     elif ! \
-        git describe \
-            --match "${release_tag_pattern}" \
-            --tags \
-            >/dev/null; then
+        vcs_has_release_tags \
+            "${PWD}" \
+            "${release_tag_pattern}"; then
         printf -- \
             'Warning: No release tags found, assuming building from development snapshots.\n' \
             1>&2
@@ -118,17 +429,18 @@ init(){
         fi
 
         all_release_tags="$(
-            git tag \
-                --list \
+            vcs_query_release_tags \
+                "${PWD}" \
                 "${release_tag_pattern}"
         )"
 
-        # We stripped out the prefix 'v' here
         last_release_tag="$(
             sort --version-sort <<< "${all_release_tags}" \
                 | tail --lines=1
         )"
 
+        # We stripped out the prefix 'v' here
+        # TODO: We should make it customizable by command-line option
         # shellcheck disable=SC2001
         last_release_version="$(
             sed 's/^v//' <<< "${last_release_tag}"
@@ -167,7 +479,9 @@ init(){
             : # do nothing
         ;;
         release)
-            git checkout "${last_release_tag}"
+            vcs_checkout \
+                "${PWD}" \
+                "${last_release_tag}"
         ;;
         *)
             printf -- 'Error: Invalid checkout_mode selected.\n' >&2
@@ -175,19 +489,11 @@ init(){
         ;;
     esac
 
-    if ! git describe &>/dev/null; then
-		# FIXME: Implement some heuristic instead of just give up here?
-        snap_version="unknown"
-    else
-        snap_version="$(
-            git \
-                describe \
-                --always \
-                --dirty \
-                --tags \
+    snap_version="$(
+        vcs_describe_revision \
+            "${PWD}" \
             | sed s/^v//
-        )"
-    fi
+    )"
 
     printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
         "${snap_version}" >&2
