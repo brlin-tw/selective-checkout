@@ -356,10 +356,6 @@ init(){
 
     for commandline_argument in "${@}"; do
         case "${commandline_argument}" in
-            # Force building development snapshot regardless the status of the snap
-            --force-snapshot)
-                flag_force_snapshot=true
-            ;;
             # Enable execution tracing
             --debug)
                 set -o xtrace
@@ -367,6 +363,10 @@ init(){
             # Don't run snapcraftctl for testing purpose
             --dry-run)
                 flag_dry_run=true
+            ;;
+            # Force building development snapshot regardless the status of the snap
+            --force-snapshot)
+                flag_force_snapshot=true
             ;;
             *)
                 printf -- \
