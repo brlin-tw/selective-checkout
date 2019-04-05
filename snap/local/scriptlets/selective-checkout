@@ -349,8 +349,8 @@ init(){
     # release_tag_pattern: We assume all tags contains dots or underscores release tags
     local \
         checkout_mode \
-        flag_force_snapshot=false \
         flag_dry_run=false \
+        flag_force_snapshot=false \
         release_tag_pattern='.*[._].*' \
         snap_version
 
