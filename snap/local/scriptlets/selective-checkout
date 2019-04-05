@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This scriptlet re-implements the pull step that will only build
+# This scriptlet enhances the pull step that will only build
 # development snapshots snaps if the latest tagged release has been
 # promoted to the stable channel.  This ensures that there's always
 # a revision of the stable release snap available in the edge channel
