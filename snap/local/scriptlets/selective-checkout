@@ -352,29 +352,49 @@ init(){
         flag_dry_run=false \
         flag_force_snapshot=false \
         release_tag_pattern='.*[._].*' \
+        release_tag_prefix=v \
         snap_version
 
-    for commandline_argument in "${@}"; do
-        case "${commandline_argument}" in
-            # Enable execution tracing
-            --debug)
-                set -o xtrace
-            ;;
-            # Don't run snapcraftctl for testing purpose
-            --dry-run)
-                flag_dry_run=true
-            ;;
-            # Force building development snapshot regardless the status of the snap
-            --force-snapshot)
-                flag_force_snapshot=true
-            ;;
-            *)
-                printf -- \
-                    'selective-checkout: Error: Invalid command-line argument.\n' \
-                    >&2
-                exit 1
-            ;;
-        esac
+    while true; do
+        if test "${#}" -eq 0; then
+            break
+        else
+            case "${1}" in
+                # Enable execution tracing
+                --debug)
+                    set -o xtrace
+                ;;
+                # Don't run snapcraftctl for testing purpose
+                --dry-run)
+                    flag_dry_run=true
+                ;;
+                # Force building development snapshot regardless the status of the snap
+                --force-snapshot)
+                    flag_force_snapshot=true
+                ;;
+                # Set the prefix for all release tags(default: `v`), the prefix will be stripped from snap version string
+                --release-tag-prefix*)
+                    if test "${1}" != --release-tag-prefix; then
+                        release_tag_prefix="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        release_tag_prefix="${2}"
+                        shift 1
+                    fi
+                ;;
+                *)
+                    printf -- \
+                        'selective-checkout: Error: Invalid command-line argument.\n' \
+                        >&2
+                    exit 1
+                ;;
+            esac
+            shift 1
+        fi
     done
 
     if test "${flag_dry_run}" = false; then
@@ -428,11 +448,9 @@ init(){
                 | tail --lines=1
         )"
 
-        # We stripped out the prefix 'v' here
-        # TODO: We should make it customizable by command-line option
         # shellcheck disable=SC2001
         last_release_version="$(
-            sed 's/^v//' <<< "${last_release_tag}"
+            sed s/^"${release_tag_prefix}"// <<< "${last_release_tag}"
         )"
 
         # Allow the `snap info` command to fail when the snap isn't published to the stable channel
@@ -481,7 +499,7 @@ init(){
     snap_version="$(
         vcs_describe_revision \
             "${PWD}" \
-            | sed s/^v//
+            | sed s/^"${release_tag_prefix}"//
     )"
 
     printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
