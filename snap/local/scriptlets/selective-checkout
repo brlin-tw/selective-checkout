@@ -6,18 +6,7 @@
 # for the publisher to promote to stable as currently the build
 # infrastructure only supports build on code push (but not new tagged
 # releases) at this time.
-#
-# This script is inspired from the snapcrafters adopted snaps workflow,
-# documented in the following forum topic:
-#
-#     The automatic build and pubish process of snaps owned by the Snapcrafters - doc - snapcraft.io
-#     https://forum.snapcraft.io/t/autopublishing-of-snapcrafters-organizations-snaps-how/7954/2
-#
-# Refer the following forum topic for a possible solution of this problem:
-#
-#     Proposal: Allow overriding the source-tag property for an one-time build in the build infrastructure - snapcraft - snapcraft.io
-#     https://forum.snapcraft.io/t/proposal-allow-overriding-the-source-tag-property-for-an-one-time-build-in-the-build-infrastructure/10303
-#
+# https://forum.snapcraft.io/t/selective-checkout-check-out-the-tagged-release-revision-if-it-isnt-promoted-to-the-stable-channel/10617
 # 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com> © 2018
 
 set \
