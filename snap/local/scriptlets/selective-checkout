@@ -527,9 +527,10 @@ init(){
 
         # Allow the `snap info` command to fail when the snap isn't published to the stable channel
         last_stable_release_on_the_snap_store="$(
-            snap info "${SNAPCRAFT_PROJECT_NAME}" || true \
+            snap info "${SNAPCRAFT_PROJECT_NAME}" \
                 | awk '$1 == "stable:" { print $2 }' \
-                | cut --delimiter=+ --fields=1
+                | cut --delimiter=+ --fields=1 \
+                || true
         )"
 
         # If the latest tagged release from the repository has not been
