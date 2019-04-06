@@ -470,10 +470,6 @@ init(){
         set -o xtrace
     fi
 
-    if test "${flag_dry_run}" = false; then
-        snapcraftctl pull
-    fi
-
     vcs_check_runtime_dependencies \
         "${PWD}"
 
