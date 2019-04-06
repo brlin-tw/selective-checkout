@@ -360,7 +360,7 @@ vcs_describe_revision(){
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
         git)
-            git describe \
+            git -C "${source_tree_root_dir}" describe \
                 --abbrev="${revision_identifier_length_minimum}" \
                 --always \
                 --dirty="${dirty_postfix}" \
