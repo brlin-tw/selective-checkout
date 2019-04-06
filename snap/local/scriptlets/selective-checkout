@@ -301,7 +301,9 @@ vcs_checkout(){
     esac
 }
 
-vcs_describe_revision(){
+# Describe software version, use tags when available
+# FIXME: Some node among source tree should be enough for source_tree_root_dir
+vcs_describe_version(){
     if test $# -ne 1; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
         exit 1
@@ -342,6 +344,64 @@ vcs_describe_revision(){
     esac
 }
 
+# Describe version control revision, only revision identifier/hash with
+# customizable minimum length
+# FIXME: Some node among source tree should be enough for source_tree_root_dir
+vcs_describe_revision(){
+    if test $# -ne 3; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r source_tree_root_dir="${1}"; shift 1
+    local -r revision_identifier_length_minimum="${1}"; shift 1
+    local -r dirty_postfix="${1}"; shift 1
+
+    case "$(vcs_detect "${source_tree_root_dir}")" in
+        git)
+            git describe \
+                --abbrev="${revision_identifier_length_minimum}" \
+                --always \
+                --dirty="${dirty_postfix}" \
+                --match=nothing
+            return 0
+        ;;
+        mercurial)
+            # FIXME: Is there a better way of generating this only using Mercurial?
+            local hg_revision
+
+            hg_revision+="$(
+                hg --cwd "${source_tree_root_dir}" log \
+                    --rev . \
+                    --template "m{shortest(node, ${revision_identifier_length_minimum})}"
+            )"
+
+            if vcs_is_dirty "${source_tree_root_dir}"; then
+                hg_revision+="${dirty_postfix}"
+            fi
+
+            printf -- %s "${hg_revision}"
+            return 0
+        ;;
+        subversion)
+            printf -- \
+                '%s: Warning: Unimplemented VCS type.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            printf unknown
+            return 0
+        ;;
+        *)
+            printf -- \
+                '%s: Warning: Unknown VCS type.\n' \
+                "${FUNCNAME[0]}" \
+                >&2
+            printf unknown
+            return 0
+        ;;
+    esac
+}
+
 init(){
     # checkout_mode:
     # - snapshot: Build as-is
@@ -349,17 +409,24 @@ init(){
     # release_tag_pattern: We assume all tags contains dots or underscores release tags
     local \
         checkout_mode \
+        flag_append_packaging_version=false \
         flag_dry_run=false \
         flag_force_snapshot=false \
+        packaging_revision \
         release_tag_pattern='.*[._].*' \
         release_tag_prefix=v \
-        snap_version
+        snap_version \
+        upstream_version
 
     while true; do
         if test "${#}" -eq 0; then
             break
         else
             case "${1}" in
+                # Append packaging revision after snap version
+                --append-packaging-revision)
+                    flag_append_packaging_version=true
+                ;;
                 # Enable execution tracing
                 --debug)
                     set -o xtrace
@@ -496,11 +563,35 @@ init(){
         ;;
     esac
 
-    snap_version="$(
-        vcs_describe_revision \
+    upstream_version="$(
+        vcs_describe_version \
             "${PWD}" \
             | sed s/^"${release_tag_prefix}"//
     )"
+
+    if test "${flag_append_packaging_version}" = true; then
+        # WORKAROUND:
+        #   Allow fetching project revision in multipass build
+        #   environment, which uses out-of-tree build and packaging
+        #   source tree repo location can't be determined via environment
+        #   Unable to determine project version info in multipass build environment - snapcraft - snapcraft.io
+        #   https://forum.snapcraft.io/t/unable-to-determine-project-version-info-in-multipass-build-environment/10416
+        if test -d /root/project; then
+            some_place_under_the_project_repo=/root/project
+        else
+            some_place_under_the_project_repo=..
+        fi
+
+        packaging_revision="$(
+            vcs_describe_revision \
+                "${some_place_under_the_project_repo}" \
+                4 \
+                -d
+        )"
+        snap_version="${upstream_version}+pkg-${packaging_revision}"
+    else
+        snap_version="${upstream_version}"
+    fi
 
     printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
         "${snap_version}" >&2
