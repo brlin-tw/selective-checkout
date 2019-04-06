@@ -373,7 +373,7 @@ vcs_describe_revision(){
             hg_revision+="$(
                 hg --cwd "${source_tree_root_dir}" log \
                     --rev . \
-                    --template "m{shortest(node, ${revision_identifier_length_minimum})}"
+                    --template "{shortest(node, ${revision_identifier_length_minimum})}"
             )"
 
             if vcs_is_dirty "${source_tree_root_dir}"; then
