@@ -31,6 +31,8 @@ for required_command in \
     fi
 done
 
+# Determine which VCS is used
+# FIXME: Allow specifying any node under the working directory, not just the root node
 vcs_detect(){
     if test $# -ne 1; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
@@ -302,7 +304,6 @@ vcs_checkout(){
 }
 
 # Describe software version, use tags when available
-# FIXME: Some node among source tree should be enough for source_tree_root_dir
 vcs_describe_version(){
     if test $# -ne 1; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
@@ -583,14 +584,15 @@ init(){
         #   Unable to determine project version info in multipass build environment - snapcraft - snapcraft.io
         #   https://forum.snapcraft.io/t/unable-to-determine-project-version-info-in-multipass-build-environment/10416
         if test -d /root/project; then
-            some_place_under_the_project_repo=/root/project
+            packaging_source_tree_root_dir=/root/project
         else
-            some_place_under_the_project_repo=..
+            # parts/_part_name_/src
+            packaging_source_tree_root_dir=../../..
         fi
 
         packaging_revision="$(
             vcs_describe_revision \
-                "${some_place_under_the_project_repo}" \
+                "${packaging_source_tree_root_dir}" \
                 4 \
                 -d
         )"
