@@ -360,28 +360,36 @@ vcs_describe_revision(){
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
         git)
-            git -C "${source_tree_root_dir}" describe \
-                --abbrev="${revision_identifier_length_minimum}" \
-                --always \
-                --dirty="${dirty_postfix}" \
-                --match=nothing
+            if ! git -C "${source_tree_root_dir}" describe --always >/dev/null; then
+                printf unknown
+            else
+                git -C "${source_tree_root_dir}" describe \
+                    --abbrev="${revision_identifier_length_minimum}" \
+                    --always \
+                    --dirty="${dirty_postfix}" \
+                    --match=nothing
+            fi
             return 0
         ;;
         mercurial)
-            # FIXME: Is there a better way of generating this only using Mercurial?
-            local hg_revision
+            if ! hg --cwd "${source_tree_root_dir}" status >/dev/null; then
+                printf unknown
+            else
+                # FIXME: Is there a better way of generating this only using Mercurial?
+                local hg_revision
 
-            hg_revision+="$(
-                hg --cwd "${source_tree_root_dir}" log \
-                    --rev . \
-                    --template "{shortest(node, ${revision_identifier_length_minimum})}"
-            )"
+                hg_revision+="$(
+                    hg --cwd "${source_tree_root_dir}" log \
+                        --rev . \
+                        --template "{shortest(node, ${revision_identifier_length_minimum})}"
+                )"
 
-            if vcs_is_dirty "${source_tree_root_dir}"; then
-                hg_revision+="${dirty_postfix}"
+                if vcs_is_dirty "${source_tree_root_dir}"; then
+                    hg_revision+="${dirty_postfix}"
+                fi
+
+                printf -- %s "${hg_revision}"
             fi
-
-            printf -- %s "${hg_revision}"
             return 0
         ;;
         subversion)
