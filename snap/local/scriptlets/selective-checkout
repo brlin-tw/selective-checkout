@@ -527,7 +527,8 @@ init(){
 
         # shellcheck disable=SC2001
         last_release_version="$(
-            sed s/^"${release_tag_prefix}"// <<< "${last_release_tag}"
+            sed s/^"${release_tag_prefix}"// <<< "${last_release_tag}" \
+                | tr _ .
         )"
 
         # Allow the `snap info` command to fail when the snap isn't published to the stable channel
