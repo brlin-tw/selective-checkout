@@ -505,7 +505,7 @@ init(){
             all_release_tags \
             last_release_tag \
             last_release_version \
-            last_stable_release_on_the_snap_store
+            last_release_version_on_the_snap_store
 
         if ! test -v SNAPCRAFT_PROJECT_NAME; then
             printf -- \
@@ -532,21 +532,21 @@ init(){
         )"
 
         # Allow the `snap info` command to fail when the snap isn't published to the stable channel
-        last_stable_release_on_the_snap_store="$(
+        last_release_version_on_the_snap_store="$(
             snap info "${SNAPCRAFT_PROJECT_NAME}" \
                 | awk '$1 == "stable:" { print $2 }' \
-                | cut --delimiter=+ --fields=1 \
+                | cut --delimiter=- --fields=1 \
                 || true
         )"
 
         # If the latest tagged release from the repository has not been
         # released to the stable channel, build that tag instead of the
         # development snapshot and publish it in the edge channel
-        if [ "${last_release_version}" != "${last_stable_release_on_the_snap_store}" ]; then
+        if [ "${last_release_version}" != "${last_release_version_on_the_snap_store}" ]; then
             printf -- \
                 "selective-checkout: Last tagged release(%s) hasn't promoted to the stable channel(%s) on the Snap Store, building tagged release instead.\\n" \
                 "${last_release_version}" \
-                "${last_stable_release_on_the_snap_store}" \
+                "${last_release_version_on_the_snap_store}" \
                 >&2
             checkout_mode=release
         else
@@ -557,7 +557,7 @@ init(){
         unset \
             all_release_tags \
             last_release_version \
-            last_stable_release_on_the_snap_store
+            last_release_version_on_the_snap_store
     fi
 
     case "${checkout_mode}" in
