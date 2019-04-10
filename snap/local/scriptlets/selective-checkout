@@ -536,6 +536,8 @@ init(){
             snap info "${SNAPCRAFT_PROJECT_NAME}" \
                 | awk '$1 == "stable:" { print $2 }' \
                 | cut --delimiter=- --fields=1 \
+                | cut --delimiter=+ --fields=1 \
+                | cut --delimiter=_ --fields=1 \
                 || true
         )"
 
