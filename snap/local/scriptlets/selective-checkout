@@ -459,6 +459,12 @@ init(){
                                 <<< "${1}"
                         )"
                     else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --release-tag-prefix requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
                         release_tag_prefix="${2}"
                         shift 1
                     fi
