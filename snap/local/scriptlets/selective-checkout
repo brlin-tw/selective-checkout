@@ -527,7 +527,7 @@ init(){
 
         # shellcheck disable=SC2001
         last_release_version="$(
-            sed s/^"${release_tag_prefix}"// <<< "${last_release_tag}" \
+            sed "s#^${release_tag_prefix}##" <<< "${last_release_tag}" \
                 | tr _ .
         )"
 
@@ -580,7 +580,7 @@ init(){
     upstream_version="$(
         vcs_describe_version \
             "${PWD}" \
-            | sed s/^"${release_tag_prefix}"//
+            | sed "s#^${release_tag_prefix}##"
     )"
 
     if test "${flag_append_packaging_version}" = true; then
