@@ -579,7 +579,9 @@ init(){
                 >&2
             checkout_mode=release
         else
-            printf -- 'selective-checkout: Last tagged release is in the stable channel, building development snapshot\n' >&2
+            printf -- 'selective-checkout: Last tagged release(%s) is in the stable channel, building development snapshot\n' \
+                "${last_release_version}" \
+                >&2
             checkout_mode=snapshot
         fi
 
