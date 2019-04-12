@@ -97,7 +97,7 @@ vcs_check_runtime_dependencies(){
         ;;
         *)
             printf -- \
-                '%s: Warning: Unknown VCS type, assuming dirty.\n' \
+                '%s: Warning: Unknown VCS type, assuming none.\n' \
                 "${FUNCNAME[0]}" \
                 >&2
             return 0
