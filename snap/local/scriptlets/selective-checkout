@@ -266,7 +266,7 @@ vcs_query_release_tags(){
     esac
 }
 
-vcs_checkout(){
+vcs_checkout_tag(){
     if test $# -ne 2; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
         exit 1
@@ -596,7 +596,7 @@ init(){
             : # do nothing
         ;;
         release)
-            vcs_checkout \
+            vcs_checkout_tag \
                 "${PWD}" \
                 "${last_release_tag}"
         ;;
