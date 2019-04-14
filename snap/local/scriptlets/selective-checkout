@@ -21,7 +21,8 @@ for required_command in \
     sed \
     snap \
     sort \
-    tail; do
+    tail \
+    tr; do
     if ! command -v "${required_command}" >/dev/null; then
         printf -- \
             'Fatal: This script requires the "%s" command in your command search PATHs.\n' \
