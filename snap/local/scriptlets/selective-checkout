@@ -273,17 +273,17 @@ vcs_checkout_tag(){
     fi
 
     local -r source_tree_root_dir="${1}"; shift 1
-    local -r revision_to_be_checked_out="${1}"; shift 1
+    local -r tag_to_be_checked_out="${1}"; shift 1
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
         git)
             git -C "${source_tree_root_dir}" checkout \
-                "${revision_to_be_checked_out}"
+                "${tag_to_be_checked_out}"
             return 0
         ;;
         mercurial)
             hg --cwd "${source_tree_root_dir}" checkout \
-                --rev "${revision_to_be_checked_out}"
+                --rev "${tag_to_be_checked_out}"
             return 0
         ;;
         subversion)
