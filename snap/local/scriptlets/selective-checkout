@@ -305,25 +305,31 @@ vcs_checkout_tag(){
 
 # Describe software version, use tags when available
 vcs_describe_version(){
-    if test $# -ne 1; then
+    if test $# -ne 3; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
         exit 1
     fi
 
     local -r source_tree_root_dir="${1}"; shift 1
+    local -r revision_identifier_length_minimum="${1}"; shift 1
+    local -r dirty_postfix="${1}"; shift 1
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
         git)
             git describe \
+                --abbrev="${revision_identifier_length_minimum}" \
                 --always \
-                --dirty \
+                --dirty="${dirty_postfix}" \
                 --tags
             return 0
         ;;
         mercurial)
             hg --cwd "${source_tree_root_dir}" log \
                 --rev . \
-                --template "{latesttag}{sub('^-0-.*', '', '-{latesttagdistance}-m{shortest(node, 7)}')}"
+                --template "{latesttag}{sub('^-0-.*', '', '-{latesttagdistance}-m{shortest(node, ${revision_identifier_length_minimum})}')}"
+            if vcs_is_dirty "${source_tree_root_dir}"; then
+                printf '%s' "${dirty_postfix}"
+            fi
             return 0
         ;;
         subversion)
@@ -609,6 +615,8 @@ init(){
     upstream_version="$(
         vcs_describe_version \
             "${PWD}" \
+            7 \
+            -dirty
             | sed "s#^${release_tag_prefix}##"
     )"
 
