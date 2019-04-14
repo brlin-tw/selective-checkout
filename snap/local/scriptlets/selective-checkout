@@ -616,7 +616,7 @@ init(){
         vcs_describe_version \
             "${PWD}" \
             7 \
-            -dirty
+            -dirty \
             | sed "s#^${release_tag_prefix}##"
     )"
 
