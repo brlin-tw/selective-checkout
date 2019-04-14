@@ -682,7 +682,10 @@ init(){
             all_release_tags \
             last_release_tag \
             last_release_version \
-            last_release_version_on_the_snap_store
+            last_release_version_on_the_snap_store \
+            normalized_release_version
+
+        local -A map_of_normalized_version_to_tag
 
         if ! test -v SNAPCRAFT_PROJECT_NAME; then
             printf -- \
@@ -697,16 +700,23 @@ init(){
                 "${release_tag_pattern}"
         )"
 
-        last_release_tag="$(
-            sort --version-sort <<< "${all_release_tags}" \
+        for tag in ${all_release_tags}; do
+            normalized_release_version="$(
+                tr _ . <<< "${tag}" \
+                    | sed "s#^${release_tag_prefix}##"
+            )"
+
+            map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
+        done
+
+        last_release_version="$(
+            echo -n "${!map_of_normalized_version_to_tag[@]}" \
+                | tr ' ' "\\n" \
+                | sort --version-sort \
                 | tail --lines=1
         )"
 
-        # shellcheck disable=SC2001
-        last_release_version="$(
-            sed "s#^${release_tag_prefix}##" <<< "${last_release_tag}" \
-                | tr _ .
-        )"
+        last_release_tag="${map_of_normalized_version_to_tag[${last_release_version}]}"
 
         # Allow the `snap info` command to fail when the snap isn't published to the stable channel
         last_release_version_on_the_snap_store="$(
