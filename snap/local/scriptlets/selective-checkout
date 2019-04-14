@@ -147,11 +147,14 @@ vcs_is_dirty(){
             fi
         ;;
         subversion)
-            printf -- \
-                '%s: Warning: Unimplemented VCS type, assuming dirty.\n' \
-                "${FUNCNAME[0]}" \
-                >&2
-            return 0
+            # NOTE: Is there any straightforward way to check this?
+            if test -n "$(
+                svn status -q
+            )"; then
+                return 0
+            else
+                return 1
+            fi
         ;;
         *)
             printf -- \
@@ -199,11 +202,48 @@ vcs_has_release_tags() {
             fi
         ;;
         subversion)
-            printf -- \
-                '%s: Warning: Unimplemented VCS type, assuming no release tags found.\n' \
-                "${FUNCNAME[0]}" \
-                >&2
-            return 1
+            local \
+                source_tree_root_url \
+                tags_dir_url
+
+            source_tree_root_url="$(
+                svn info \
+                    --show-item url \
+                     "${source_tree_root_dir}"
+            )"
+
+            # Supported source URLs:
+            # * /trunk
+            # * /tags/_tag_name_
+            case "${source_tree_root_url}" in
+                */trunk)
+                    # Strip trailing shortest matched pattern
+                    # https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
+                    tags_dir_url="${source_tree_root_url%/trunk}/tags"
+                ;;
+                */tags/*)
+                    tags_dir_url="${source_tree_root_url%/*}"
+                ;;
+                *)
+                    printf -- \
+                        'Warning: %s: Unsupported SVN source URL, assuming no release tags found.\n' \
+                        "${FUNCNAME[0]}" \
+                        >&2
+                    return 1
+                ;;
+            esac
+
+            if svn list \
+                "${tags_dir_url}" \
+                | sed 's#/$##' \
+                | grep \
+                    --extended-regexp \
+                    --quiet \
+                    "${release_tag_pattern}"; then
+                return 0
+            else
+                return 1
+            fi
         ;;
         *)
             printf -- \
@@ -250,11 +290,47 @@ vcs_query_release_tags(){
             fi
         ;;
         subversion)
-            printf -- \
-                '%s: Warning: Unimplemented VCS type, assuming no release tags found.\n' \
-                "${FUNCNAME[0]}" \
-                >&2
-            return 1
+            local \
+                source_tree_root_url \
+                tags_dir_url
+
+            source_tree_root_url="$(
+                svn info \
+                    --show-item url \
+                     "${source_tree_root_dir}"
+            )"
+
+            # Supported source URLs:
+            # * /trunk
+            # * /tags/_tag_name_
+            case "${source_tree_root_url}" in
+                */trunk)
+                    # Strip trailing shortest matched pattern
+                    # https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
+                    tags_dir_url="${source_tree_root_url%/trunk}/tags"
+                ;;
+                */tags/*)
+                    tags_dir_url="${source_tree_root_url%/*}"
+                ;;
+                *)
+                    printf -- \
+                        'Warning: %s: Unsupported SVN source URL, assuming no release tags found.\n' \
+                        "${FUNCNAME[0]}" \
+                        >&2
+                    return 1
+                ;;
+            esac
+
+            if svn list \
+                "${tags_dir_url}" \
+                | sed 's#/$##' \
+                | grep \
+                    --extended-regexp \
+                    "${release_tag_pattern}"; then
+                return 0
+            else
+                return 1
+            fi
         ;;
         *)
             printf -- \
@@ -287,11 +363,43 @@ vcs_checkout_tag(){
             return 0
         ;;
         subversion)
-            printf -- \
-                '%s: Warning: Unimplemented VCS type, not doing anything.\n' \
-                "${FUNCNAME[0]}" \
-                >&2
-            return 1
+            local \
+                source_tree_root_url \
+                tags_dir_url
+
+            source_tree_root_url="$(
+                svn info \
+                    --show-item url \
+                     "${source_tree_root_dir}"
+            )"
+
+            # Supported source URLs:
+            # * /trunk
+            # * /tags/_tag_name_
+            case "${source_tree_root_url}" in
+                */trunk)
+                    # Strip trailing shortest matched pattern
+                    # https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
+                    tags_dir_url="${source_tree_root_url%/trunk}/tags"
+                ;;
+                */tags/*)
+                    tags_dir_url="${source_tree_root_url%/*}"
+                ;;
+                *)
+                    printf -- \
+                        'Warning: %s: Unsupported SVN source URL, assuming check out failed.\n' \
+                        "${FUNCNAME[0]}" \
+                        >&2
+                    return 1
+                ;;
+            esac
+
+            if svn checkout \
+                "${tags_dir_url}"/"${tag_to_be_checked_out}"; then
+                return 0
+            else
+                return 1
+            fi
         ;;
         *)
             printf -- \
@@ -333,12 +441,45 @@ vcs_describe_version(){
             return 0
         ;;
         subversion)
-            printf -- \
-                '%s: Warning: Unimplemented VCS type.\n' \
-                "${FUNCNAME[0]}" \
-                >&2
-            printf unknown
-            return 0
+            local \
+                source_tree_root_url
+
+            source_tree_root_url="$(
+                svn info \
+                    --show-item url \
+                     "${source_tree_root_dir}"
+            )"
+
+            # Supported source URLs:
+            # * /trunk
+            # * /tags/_tag_name_
+            case "${source_tree_root_url}" in
+                */trunk)
+                    printf %s \
+                        "rev$(
+                            svn info \
+                                --show-item revision \
+                                "${source_tree_root_dir}"
+                        )"
+                ;;
+                */tags/*)
+                    local tag
+                    tag="${source_tree_root_url##*/}"
+                    printf %s "${tag}"
+                ;;
+                *)
+                    printf -- \
+                        'Warning: %s: Unsupported SVN source URL.\n' \
+                        "${FUNCNAME[0]}" \
+                        >&2
+                    printf unknown
+                    return 1
+                ;;
+            esac
+
+            if vcs_is_dirty "${source_tree_root_dir}"; then
+                printf -- %s "${dirty_postfix}"
+            fi
         ;;
         *)
             printf -- \
@@ -399,12 +540,13 @@ vcs_describe_revision(){
             return 0
         ;;
         subversion)
-            printf -- \
-                '%s: Warning: Unimplemented VCS type.\n' \
-                "${FUNCNAME[0]}" \
-                >&2
-            printf unknown
-            return 0
+            svn info \
+                --show-item revision \
+                    "${source_tree_root_dir}"
+
+            if vcs_is_dirty "${source_tree_root_dir}"; then
+                printf -- %s "${dirty_postfix}"
+            fi
         ;;
         *)
             printf -- \
