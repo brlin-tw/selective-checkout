@@ -328,7 +328,7 @@ vcs_describe_version(){
                 --rev . \
                 --template "{latesttag}{sub('^-0-.*', '', '-{latesttagdistance}-m{shortest(node, ${revision_identifier_length_minimum})}')}"
             if vcs_is_dirty "${source_tree_root_dir}"; then
-                printf '%s' "${dirty_postfix}"
+                printf -- %s "${dirty_postfix}"
             fi
             return 0
         ;;
