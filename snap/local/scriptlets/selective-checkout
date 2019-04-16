@@ -36,7 +36,7 @@ init(){
     # checkout_mode:
     # - snapshot: Build as-is
     # - release: Build the latest tagged release
-    # release_tag_pattern: We assume all tags contains dots or underscores release tags
+    # tag_pattern_release: We assume all tags contains dots or underscores release tags
     local \
         checkout_mode \
         flag_append_packaging_version=false \
@@ -46,8 +46,10 @@ init(){
         packaging_revision \
         postfix_dirty_marker_packaging=-d \
         postfix_dirty_marker_upstream=-dirty \
-        release_tag_pattern='.*[._].*' \
-        release_tag_prefix=v \
+        tag_pattern_beta='-beta[[:digit:]]+$' \
+        tag_pattern_release='.*[._].*' \
+        tag_pattern_release_candidate='-rc[[:digit:]]+$' \
+        tag_prefix_release=v \
         revision_minimal_length_packaging=4 \
         revision_minimal_length_upstream=7 \
         snap_version \
@@ -116,7 +118,7 @@ init(){
                 # Set the prefix for all release tags(default: `v`), the prefix will be stripped from snap version string
                 --release-tag-prefix*)
                     if test "${1}" != --release-tag-prefix; then
-                        release_tag_prefix="$(
+                        tag_prefix_release="$(
                             cut \
                                 --delimiter== \
                                 --fields=2 \
@@ -129,7 +131,7 @@ init(){
                                 >&2
                             exit 1
                         fi
-                        release_tag_prefix="${2}"
+                        tag_prefix_release="${2}"
                         shift 1
                     fi
                 ;;
@@ -225,7 +227,7 @@ init(){
     elif ! \
         vcs_has_release_tags \
             "${PWD}" \
-            "${release_tag_pattern}"; then
+            "${tag_pattern_release}"; then
         printf -- \
             'Warning: No release tags found, assuming building from development snapshots.\n' \
             1>&2
@@ -250,13 +252,13 @@ init(){
         all_release_tags="$(
             vcs_query_release_tags \
                 "${PWD}" \
-                "${release_tag_pattern}"
+                "${tag_pattern_release}"
         )"
 
         for tag in ${all_release_tags}; do
             normalized_release_version="$(
                 tr _ . <<< "${tag}" \
-                    | sed "s#^${release_tag_prefix}##"
+                    | sed "s#^${tag_prefix_release}##"
             )"
 
             map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
@@ -322,7 +324,7 @@ init(){
             "${PWD}" \
             "${revision_minimal_length_upstream}" \
             "${postfix_dirty_marker_upstream}" \
-            | sed "s#^${release_tag_prefix}##"
+            | sed "s#^${tag_prefix_release}##"
     )"
 
     if test "${flag_append_packaging_version}" = true; then
@@ -505,7 +507,7 @@ vcs_has_release_tags() {
     local -r source_tree_root_dir="${1}"; shift 1
 
     # Pattern to match a release tag, in extended regular expression(ERE)
-    local -r release_tag_pattern="${1}"; shift 1
+    local -r tag_pattern_release="${1}"; shift 1
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
         git)
@@ -514,7 +516,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
-                    "${release_tag_pattern}"; then
+                    "${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -525,7 +527,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
-                    "${release_tag_pattern}"; then
+                    "${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -569,7 +571,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
-                    "${release_tag_pattern}"; then
+                    "${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -594,7 +596,7 @@ vcs_query_release_tags(){
     local -r source_tree_root_dir="${1}"; shift 1
 
     # Pattern to match a release tag, in extended regular expression(ERE)
-    local -r release_tag_pattern="${1}"; shift 1
+    local -r tag_pattern_release="${1}"; shift 1
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
         git)
@@ -602,7 +604,7 @@ vcs_query_release_tags(){
                 --list \
                 | grep \
                     --extended-regexp \
-                    "${release_tag_pattern}"; then
+                    "${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -613,7 +615,7 @@ vcs_query_release_tags(){
                 --quiet \
                 | grep \
                     --extended-regexp \
-                    "${release_tag_pattern}"; then
+                    "${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -656,7 +658,7 @@ vcs_query_release_tags(){
                 | sed 's#/$##' \
                 | grep \
                     --extended-regexp \
-                    "${release_tag_pattern}"; then
+                    "${tag_pattern_release}"; then
                 return 0
             else
                 return 1
