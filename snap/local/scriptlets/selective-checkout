@@ -32,6 +32,335 @@ for required_command in \
     fi
 done
 
+init(){
+    # checkout_mode:
+    # - snapshot: Build as-is
+    # - release: Build the latest tagged release
+    # release_tag_pattern: We assume all tags contains dots or underscores release tags
+    local \
+        checkout_mode \
+        flag_append_packaging_version=false \
+        flag_dry_run=false \
+        flag_debug_tracing=false \
+        flag_force_snapshot=false \
+        packaging_revision \
+        postfix_dirty_marker_packaging=-d \
+        postfix_dirty_marker_upstream=-dirty \
+        release_tag_pattern='.*[._].*' \
+        release_tag_prefix=v \
+        revision_minimal_length_packaging=4 \
+        revision_minimal_length_upstream=7 \
+        snap_version \
+        snap_version_postfix_seperator=+ \
+        upstream_version
+
+    while true; do
+        if test "${#}" -eq 0; then
+            break
+        else
+            case "${1}" in
+                # Append packaging revision after snap version
+                --append-packaging-revision)
+                    flag_append_packaging_version=true
+                ;;
+                # Enable execution tracing
+                --debug)
+                    flag_debug_tracing=true
+                ;;
+                # Don't run snapcraftctl for testing purpose
+                --dry-run)
+                    flag_dry_run=true
+                ;;
+                # Force building development snapshot regardless the status of the snap
+                --force-snapshot)
+                    flag_force_snapshot=true
+                ;;
+                --packaging-dirty-marker-postfix*)
+                    if test "${1}" != --packaging-dirty-marker-postfix; then
+                        postfix_dirty_marker_packaging="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --packaging-dirty-marker-postfix requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        postfix_dirty_marker_packaging="${2}"
+                        shift 1
+                    fi
+                ;;
+                --packaging-revision-minimal-length*)
+                    if test "${1}" != --packaging-revision-minimal-length; then
+                        revision_minimal_length_packaging="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --packaging-revision-minimal-length requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        revision_minimal_length_packaging="${2}"
+                        shift 1
+                    fi
+                ;;
+                # Set the prefix for all release tags(default: `v`), the prefix will be stripped from snap version string
+                --release-tag-prefix*)
+                    if test "${1}" != --release-tag-prefix; then
+                        release_tag_prefix="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --release-tag-prefix requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        release_tag_prefix="${2}"
+                        shift 1
+                    fi
+                ;;
+                --upstream-dirty-marker-postfix*)
+                    if test "${1}" != --upstream-dirty-marker-postfix; then
+                        postfix_dirty_marker_upstream="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --upstream-dirty-marker-postfix requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        postfix_dirty_marker_upstream="${2}"
+                        shift 1
+                    fi
+                ;;
+                --upstream-revision-minimal-length*)
+                    if test "${1}" != --upstream-revision-minimal-length; then
+                        revision_minimal_length_upstream="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --upstream-revision-minimal-length requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        revision_minimal_length_upstream="${2}"
+                        shift 1
+                    fi
+                ;;
+                # Set the seperator for the postfixed string in the snap version string
+                # the postfixed string will be stripped before comparing with the stripped
+                # uptream release version
+                --snap-postfix-seperator*)
+                    if test "${1}" != --snap-postfix-seperator; then
+                        snap_version_postfix_seperator="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --snap-postfix-seperator requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        snap_version_postfix_seperator="${2}"
+                        shift 1
+                    fi
+                ;;
+                *)
+                    printf -- \
+                        'selective-checkout: Error: Invalid command-line argument.\n' \
+                        >&2
+                    exit 1
+                ;;
+            esac
+            shift 1
+        fi
+    done
+
+    if test "${flag_debug_tracing}" = true; then
+        set -o xtrace
+    fi
+
+    vcs_check_runtime_dependencies \
+        "${PWD}"
+
+    if test "${flag_force_snapshot}" = true; then
+        printf -- 'selective-checkout: Force building development snapshots\n' >&2
+        checkout_mode=snapshot
+    elif test "$(vcs_detect "${PWD}")" = not_found; then
+        printf -- 'selective-checkout: Build from source archive\n' >&2
+        checkout_mode=snapshot
+    elif vcs_is_dirty "${PWD}"; then
+        # If tracked files are modified
+        # or staging area not empty
+        printf -- 'selective-checkout: Working tree is dirty, building development snapshot with additional changes\n' >&2
+        checkout_mode=snapshot
+    elif ! \
+        vcs_has_release_tags \
+            "${PWD}" \
+            "${release_tag_pattern}"; then
+        printf -- \
+            'Warning: No release tags found, assuming building from development snapshots.\n' \
+            1>&2
+        checkout_mode=snapshot
+    else
+        local \
+            all_release_tags \
+            last_release_tag \
+            last_release_version \
+            last_release_version_on_the_snap_store \
+            normalized_release_version
+
+        local -A map_of_normalized_version_to_tag
+
+        if ! test -v SNAPCRAFT_PROJECT_NAME; then
+            printf -- \
+                "selective-checkout: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
+                >&2
+            exit 1
+        fi
+
+        all_release_tags="$(
+            vcs_query_release_tags \
+                "${PWD}" \
+                "${release_tag_pattern}"
+        )"
+
+        for tag in ${all_release_tags}; do
+            normalized_release_version="$(
+                tr _ . <<< "${tag}" \
+                    | sed "s#^${release_tag_prefix}##"
+            )"
+
+            map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
+        done
+
+        last_release_version="$(
+            echo -n "${!map_of_normalized_version_to_tag[@]}" \
+                | tr ' ' "\\n" \
+                | sort --version-sort \
+                | tail --lines=1
+        )"
+
+        last_release_tag="${map_of_normalized_version_to_tag[${last_release_version}]}"
+
+        # Allow the `snap info` command to fail when the snap isn't published to the stable channel
+        last_release_version_on_the_snap_store="$(
+            snap info "${SNAPCRAFT_PROJECT_NAME}" \
+                | awk '$1 == "stable:" { print $2 }' \
+                | cut --delimiter="${snap_version_postfix_seperator}" --fields=1 \
+                || true
+        )"
+
+        # If the latest tagged release from the repository has not been
+        # released to the stable channel, build that tag instead of the
+        # development snapshot and publish it in the edge channel
+        if [ "${last_release_version}" != "${last_release_version_on_the_snap_store}" ]; then
+            printf -- \
+                "selective-checkout: Last tagged release(%s) hasn't promoted to the stable channel(%s) on the Snap Store, building tagged release instead.\\n" \
+                "${last_release_version}" \
+                "${last_release_version_on_the_snap_store}" \
+                >&2
+            checkout_mode=release
+        else
+            printf -- 'selective-checkout: Last tagged release(%s) is in the stable channel, building development snapshot\n' \
+                "${last_release_version}" \
+                >&2
+            checkout_mode=snapshot
+        fi
+
+        unset \
+            all_release_tags \
+            last_release_version \
+            last_release_version_on_the_snap_store
+    fi
+
+    case "${checkout_mode}" in
+        snapshot)
+            : # do nothing
+        ;;
+        release)
+            vcs_checkout_tag \
+                "${PWD}" \
+                "${last_release_tag}"
+        ;;
+        *)
+            printf -- 'Error: Invalid checkout_mode selected.\n' >&2
+            exit 1
+        ;;
+    esac
+
+    upstream_version="$(
+        vcs_describe_version \
+            "${PWD}" \
+            "${revision_minimal_length_upstream}" \
+            "${postfix_dirty_marker_upstream}" \
+            | sed "s#^${release_tag_prefix}##"
+    )"
+
+    if test "${flag_append_packaging_version}" = true; then
+        # WORKAROUND:
+        #   Allow fetching project revision in multipass build
+        #   environment, which uses out-of-tree build and packaging
+        #   source tree repo location can't be determined via environment
+        #   Unable to determine project version info in multipass build environment - snapcraft - snapcraft.io
+        #   https://forum.snapcraft.io/t/unable-to-determine-project-version-info-in-multipass-build-environment/10416
+        if test -d /root/project; then
+            packaging_source_tree_root_dir=/root/project
+        else
+            # parts/_part_name_/src
+            packaging_source_tree_root_dir=../../..
+        fi
+
+        packaging_revision="$(
+            vcs_describe_revision \
+                "${packaging_source_tree_root_dir}" \
+                "${revision_minimal_length_packaging}" \
+                "${postfix_dirty_marker_packaging}"
+        )"
+        snap_version="${upstream_version}+pkg-${packaging_revision}"
+    else
+        snap_version="${upstream_version}"
+    fi
+
+    printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
+        "${snap_version}" >&2
+    if test "${flag_dry_run}" = false; then
+        snapcraftctl \
+            set-version \
+            "${snap_version}"
+    fi
+
+    exit 0
+}
+
 # Determine which VCS is used
 # FIXME: Allow specifying any node under the working directory, not just the root node
 vcs_detect(){
@@ -558,335 +887,6 @@ vcs_describe_revision(){
             return 0
         ;;
     esac
-}
-
-init(){
-    # checkout_mode:
-    # - snapshot: Build as-is
-    # - release: Build the latest tagged release
-    # release_tag_pattern: We assume all tags contains dots or underscores release tags
-    local \
-        checkout_mode \
-        flag_append_packaging_version=false \
-        flag_dry_run=false \
-        flag_debug_tracing=false \
-        flag_force_snapshot=false \
-        packaging_revision \
-        postfix_dirty_marker_packaging=-d \
-        postfix_dirty_marker_upstream=-dirty \
-        release_tag_pattern='.*[._].*' \
-        release_tag_prefix=v \
-        revision_minimal_length_packaging=4 \
-        revision_minimal_length_upstream=7 \
-        snap_version \
-        snap_version_postfix_seperator=+ \
-        upstream_version
-
-    while true; do
-        if test "${#}" -eq 0; then
-            break
-        else
-            case "${1}" in
-                # Append packaging revision after snap version
-                --append-packaging-revision)
-                    flag_append_packaging_version=true
-                ;;
-                # Enable execution tracing
-                --debug)
-                    flag_debug_tracing=true
-                ;;
-                # Don't run snapcraftctl for testing purpose
-                --dry-run)
-                    flag_dry_run=true
-                ;;
-                # Force building development snapshot regardless the status of the snap
-                --force-snapshot)
-                    flag_force_snapshot=true
-                ;;
-                --packaging-dirty-marker-postfix*)
-                    if test "${1}" != --packaging-dirty-marker-postfix; then
-                        postfix_dirty_marker_packaging="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --packaging-dirty-marker-postfix requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        postfix_dirty_marker_packaging="${2}"
-                        shift 1
-                    fi
-                ;;
-                --packaging-revision-minimal-length*)
-                    if test "${1}" != --packaging-revision-minimal-length; then
-                        revision_minimal_length_packaging="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --packaging-revision-minimal-length requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        revision_minimal_length_packaging="${2}"
-                        shift 1
-                    fi
-                ;;
-                # Set the prefix for all release tags(default: `v`), the prefix will be stripped from snap version string
-                --release-tag-prefix*)
-                    if test "${1}" != --release-tag-prefix; then
-                        release_tag_prefix="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --release-tag-prefix requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        release_tag_prefix="${2}"
-                        shift 1
-                    fi
-                ;;
-                --upstream-dirty-marker-postfix*)
-                    if test "${1}" != --upstream-dirty-marker-postfix; then
-                        postfix_dirty_marker_upstream="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --upstream-dirty-marker-postfix requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        postfix_dirty_marker_upstream="${2}"
-                        shift 1
-                    fi
-                ;;
-                --upstream-revision-minimal-length*)
-                    if test "${1}" != --upstream-revision-minimal-length; then
-                        revision_minimal_length_upstream="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --upstream-revision-minimal-length requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        revision_minimal_length_upstream="${2}"
-                        shift 1
-                    fi
-                ;;
-                # Set the seperator for the postfixed string in the snap version string
-                # the postfixed string will be stripped before comparing with the stripped
-                # uptream release version
-                --snap-postfix-seperator*)
-                    if test "${1}" != --snap-postfix-seperator; then
-                        snap_version_postfix_seperator="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --snap-postfix-seperator requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        snap_version_postfix_seperator="${2}"
-                        shift 1
-                    fi
-                ;;
-                *)
-                    printf -- \
-                        'selective-checkout: Error: Invalid command-line argument.\n' \
-                        >&2
-                    exit 1
-                ;;
-            esac
-            shift 1
-        fi
-    done
-
-    if test "${flag_debug_tracing}" = true; then
-        set -o xtrace
-    fi
-
-    vcs_check_runtime_dependencies \
-        "${PWD}"
-
-    if test "${flag_force_snapshot}" = true; then
-        printf -- 'selective-checkout: Force building development snapshots\n' >&2
-        checkout_mode=snapshot
-    elif test "$(vcs_detect "${PWD}")" = not_found; then
-        printf -- 'selective-checkout: Build from source archive\n' >&2
-        checkout_mode=snapshot
-    elif vcs_is_dirty "${PWD}"; then
-        # If tracked files are modified
-        # or staging area not empty
-        printf -- 'selective-checkout: Working tree is dirty, building development snapshot with additional changes\n' >&2
-        checkout_mode=snapshot
-    elif ! \
-        vcs_has_release_tags \
-            "${PWD}" \
-            "${release_tag_pattern}"; then
-        printf -- \
-            'Warning: No release tags found, assuming building from development snapshots.\n' \
-            1>&2
-        checkout_mode=snapshot
-    else
-        local \
-            all_release_tags \
-            last_release_tag \
-            last_release_version \
-            last_release_version_on_the_snap_store \
-            normalized_release_version
-
-        local -A map_of_normalized_version_to_tag
-
-        if ! test -v SNAPCRAFT_PROJECT_NAME; then
-            printf -- \
-                "selective-checkout: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
-                >&2
-            exit 1
-        fi
-
-        all_release_tags="$(
-            vcs_query_release_tags \
-                "${PWD}" \
-                "${release_tag_pattern}"
-        )"
-
-        for tag in ${all_release_tags}; do
-            normalized_release_version="$(
-                tr _ . <<< "${tag}" \
-                    | sed "s#^${release_tag_prefix}##"
-            )"
-
-            map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
-        done
-
-        last_release_version="$(
-            echo -n "${!map_of_normalized_version_to_tag[@]}" \
-                | tr ' ' "\\n" \
-                | sort --version-sort \
-                | tail --lines=1
-        )"
-
-        last_release_tag="${map_of_normalized_version_to_tag[${last_release_version}]}"
-
-        # Allow the `snap info` command to fail when the snap isn't published to the stable channel
-        last_release_version_on_the_snap_store="$(
-            snap info "${SNAPCRAFT_PROJECT_NAME}" \
-                | awk '$1 == "stable:" { print $2 }' \
-                | cut --delimiter="${snap_version_postfix_seperator}" --fields=1 \
-                || true
-        )"
-
-        # If the latest tagged release from the repository has not been
-        # released to the stable channel, build that tag instead of the
-        # development snapshot and publish it in the edge channel
-        if [ "${last_release_version}" != "${last_release_version_on_the_snap_store}" ]; then
-            printf -- \
-                "selective-checkout: Last tagged release(%s) hasn't promoted to the stable channel(%s) on the Snap Store, building tagged release instead.\\n" \
-                "${last_release_version}" \
-                "${last_release_version_on_the_snap_store}" \
-                >&2
-            checkout_mode=release
-        else
-            printf -- 'selective-checkout: Last tagged release(%s) is in the stable channel, building development snapshot\n' \
-                "${last_release_version}" \
-                >&2
-            checkout_mode=snapshot
-        fi
-
-        unset \
-            all_release_tags \
-            last_release_version \
-            last_release_version_on_the_snap_store
-    fi
-
-    case "${checkout_mode}" in
-        snapshot)
-            : # do nothing
-        ;;
-        release)
-            vcs_checkout_tag \
-                "${PWD}" \
-                "${last_release_tag}"
-        ;;
-        *)
-            printf -- 'Error: Invalid checkout_mode selected.\n' >&2
-            exit 1
-        ;;
-    esac
-
-    upstream_version="$(
-        vcs_describe_version \
-            "${PWD}" \
-            "${revision_minimal_length_upstream}" \
-            "${postfix_dirty_marker_upstream}" \
-            | sed "s#^${release_tag_prefix}##"
-    )"
-
-    if test "${flag_append_packaging_version}" = true; then
-        # WORKAROUND:
-        #   Allow fetching project revision in multipass build
-        #   environment, which uses out-of-tree build and packaging
-        #   source tree repo location can't be determined via environment
-        #   Unable to determine project version info in multipass build environment - snapcraft - snapcraft.io
-        #   https://forum.snapcraft.io/t/unable-to-determine-project-version-info-in-multipass-build-environment/10416
-        if test -d /root/project; then
-            packaging_source_tree_root_dir=/root/project
-        else
-            # parts/_part_name_/src
-            packaging_source_tree_root_dir=../../..
-        fi
-
-        packaging_revision="$(
-            vcs_describe_revision \
-                "${packaging_source_tree_root_dir}" \
-                "${revision_minimal_length_packaging}" \
-                "${postfix_dirty_marker_packaging}"
-        )"
-        snap_version="${upstream_version}+pkg-${packaging_revision}"
-    else
-        snap_version="${upstream_version}"
-    fi
-
-    printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
-        "${snap_version}" >&2
-    if test "${flag_dry_run}" = false; then
-        snapcraftctl \
-            set-version \
-            "${snap_version}"
-    fi
-
-    exit 0
 }
 
 init "${@}"
