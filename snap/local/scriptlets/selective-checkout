@@ -516,6 +516,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
+                    -- \
                     "${tag_pattern_release}"; then
                 return 0
             else
@@ -527,6 +528,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
+                    -- \
                     "${tag_pattern_release}"; then
                 return 0
             else
@@ -571,6 +573,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
+                    -- \
                     "${tag_pattern_release}"; then
                 return 0
             else
@@ -604,6 +607,7 @@ vcs_query_release_tags(){
                 --list \
                 | grep \
                     --extended-regexp \
+                    -- \
                     "${tag_pattern_release}"; then
                 return 0
             else
@@ -615,6 +619,7 @@ vcs_query_release_tags(){
                 --quiet \
                 | grep \
                     --extended-regexp \
+                    -- \
                     "${tag_pattern_release}"; then
                 return 0
             else
@@ -658,6 +663,7 @@ vcs_query_release_tags(){
                 | sed 's#/$##' \
                 | grep \
                     --extended-regexp \
+                    -- \
                     "${tag_pattern_release}"; then
                 return 0
             else
