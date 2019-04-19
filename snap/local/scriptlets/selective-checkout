@@ -440,7 +440,7 @@ init(){
                     | sort --version-sort \
                     | tail --lines=1
             )"
-            last_beta_tag="${map_of_normalized_version_to_tag[${last_release_candidate_version}]}"
+            last_beta_tag="${map_of_normalized_version_to_tag[${last_beta_version}]}"
             last_beta_version_on_the_snap_store="$(
                 snap_query_version \
                     "${SNAPCRAFT_PROJECT_NAME}" \
