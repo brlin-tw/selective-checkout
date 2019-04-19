@@ -353,8 +353,7 @@ init(){
             --extended-regexp \
             "${stable_pattern_grep_matching_option}" \
             --quiet \
-            -- \
-            "(${tag_pattern_stable})" \
+            --regexp="(${tag_pattern_stable})" \
             <<< "${!map_of_normalized_version_to_tag[@]}"; then
             local \
                 last_stable_tag \
@@ -367,8 +366,7 @@ init(){
                     | grep \
                         --extended-regexp \
                         "${stable_pattern_grep_matching_option}" \
-                        -- \
-                        "(${tag_pattern_stable})" \
+                        --regexp="(${tag_pattern_stable})" \
                     | sort --version-sort \
                     | tail --lines=1
             )"
@@ -391,8 +389,7 @@ init(){
         if grep \
             --extended-regexp \
             --quiet \
-            -- \
-            "${tag_pattern_release_candidate}" \
+            --regexp="${tag_pattern_release_candidate}" \
             <<< "${!map_of_normalized_version_to_tag[@]}"; then
             local \
                 last_release_candidate_tag \
@@ -404,8 +401,7 @@ init(){
                     | tr ' ' "\\n" \
                     | grep \
                         --extended-regexp \
-                        -- \
-                        "${tag_pattern_release_candidate}" \
+                        --regexp="${tag_pattern_release_candidate}" \
                     | sort --version-sort \
                     | tail --lines=1
             )"
@@ -429,8 +425,7 @@ init(){
         if grep \
             --extended-regexp \
             --quiet \
-            -- \
-            "${tag_pattern_beta}" \
+            --regexp="${tag_pattern_beta}" \
             <<< "${!map_of_normalized_version_to_tag[@]}"; then
             local \
                 last_beta_tag \
@@ -442,8 +437,7 @@ init(){
                     | tr ' ' "\\n" \
                     | grep \
                         --extended-regexp \
-                        -- \
-                        "${tag_pattern_beta}" \
+                        --regexp="${tag_pattern_beta}" \
                     | sort --version-sort \
                     | tail --lines=1
             )"
@@ -773,8 +767,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
-                    -- \
-                    "${tag_pattern_release}"; then
+                    --regexp="${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -785,8 +778,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
-                    -- \
-                    "${tag_pattern_release}"; then
+                    --regexp="${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -830,8 +822,7 @@ vcs_has_release_tags() {
                 | grep \
                     --extended-regexp \
                     --quiet \
-                    -- \
-                    "${tag_pattern_release}"; then
+                    --regexp="${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -864,8 +855,7 @@ vcs_query_release_tags(){
                 --list \
                 | grep \
                     --extended-regexp \
-                    -- \
-                    "${tag_pattern_release}"; then
+                    --regexp="${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -876,8 +866,7 @@ vcs_query_release_tags(){
                 --quiet \
                 | grep \
                     --extended-regexp \
-                    -- \
-                    "${tag_pattern_release}"; then
+                    --regexp="${tag_pattern_release}"; then
                 return 0
             else
                 return 1
@@ -920,8 +909,7 @@ vcs_query_release_tags(){
                 | sed 's#/$##' \
                 | grep \
                     --extended-regexp \
-                    -- \
-                    "${tag_pattern_release}"; then
+                    --regexp="${tag_pattern_release}"; then
                 return 0
             else
                 return 1
