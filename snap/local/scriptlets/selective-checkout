@@ -354,7 +354,7 @@ init(){
             ${stable_pattern_grep_matching_option} \
             --quiet \
             --regexp="(${tag_pattern_stable})" \
-            <<< "${!map_of_normalized_version_to_tag[@]}"; then
+            <<< "${!map_of_normalized_version_to_tag[*]}"; then
             local \
                 last_stable_tag \
                 last_stable_version \
