@@ -419,7 +419,6 @@ init(){
         fi
 
         unset \
-            snap_version_postfix_seperator \
             tag_pattern_release_candidate
 
         if grep \
@@ -456,6 +455,7 @@ init(){
 
         unset \
             map_of_normalized_version_to_tag \
+            snap_version_postfix_seperator \
             tag_pattern_beta
 
         if test "${flag_version_mismatch_stable}" = true; then
