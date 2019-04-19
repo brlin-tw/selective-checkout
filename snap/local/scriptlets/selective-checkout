@@ -351,7 +351,7 @@ init(){
 
         if grep \
             --extended-regexp \
-            "${stable_pattern_grep_matching_option}" \
+            ${stable_pattern_grep_matching_option} \
             --quiet \
             --regexp="(${tag_pattern_stable})" \
             <<< "${!map_of_normalized_version_to_tag[@]}"; then
@@ -365,7 +365,7 @@ init(){
                     | tr ' ' "\\n" \
                     | grep \
                         --extended-regexp \
-                        "${stable_pattern_grep_matching_option}" \
+                        ${stable_pattern_grep_matching_option} \
                         --regexp="(${tag_pattern_stable})" \
                     | sort --version-sort \
                     | tail --lines=1
