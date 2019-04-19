@@ -349,12 +349,13 @@ init(){
             tag_pattern_stable="${tag_pattern_beta}|${tag_pattern_release_candidate}"
         fi
 
-        if grep \
-            --extended-regexp \
-            ${stable_pattern_grep_matching_option} \
-            --quiet \
-            --regexp="(${tag_pattern_stable})" \
-            <<< "${!map_of_normalized_version_to_tag[*]}"; then
+        if echo -n "${!map_of_normalized_version_to_tag[@]}" \
+            | tr ' ' "\\n" \
+            | grep \
+                --extended-regexp \
+                ${stable_pattern_grep_matching_option} \
+                --quiet \
+                --regexp="(${tag_pattern_stable})"; then
             local \
                 last_stable_tag \
                 last_stable_version \
@@ -386,11 +387,12 @@ init(){
             stable_pattern_grep_matching_option \
             tag_pattern_stable
 
-        if grep \
-            --extended-regexp \
-            --quiet \
-            --regexp="${tag_pattern_release_candidate}" \
-            <<< "${!map_of_normalized_version_to_tag[@]}"; then
+        if echo -n "${!map_of_normalized_version_to_tag[@]}" \
+            | tr ' ' "\\n" \
+            | grep \
+                --extended-regexp \
+                --quiet \
+                --regexp="${tag_pattern_release_candidate}"; then
             local \
                 last_release_candidate_tag \
                 last_release_candidate_version \
@@ -421,11 +423,12 @@ init(){
         unset \
             tag_pattern_release_candidate
 
-        if grep \
-            --extended-regexp \
-            --quiet \
-            --regexp="${tag_pattern_beta}" \
-            <<< "${!map_of_normalized_version_to_tag[@]}"; then
+        if echo -n "${!map_of_normalized_version_to_tag[@]}" \
+            | tr ' ' "\\n" \
+            | grep \
+                --extended-regexp \
+                --quiet \
+                --regexp="${tag_pattern_beta}"; then
             local \
                 last_beta_tag \
                 last_beta_version \
