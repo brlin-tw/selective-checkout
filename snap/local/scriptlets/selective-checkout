@@ -49,6 +49,7 @@ init(){
         tag_pattern_beta='-beta[[:digit:]]+$' \
         tag_pattern_release='.*[._].*' \
         tag_pattern_release_candidate='-rc[[:digit:]]+$' \
+        tag_pattern_stable \
         tag_prefix_release=v \
         revision_minimal_length_packaging=4 \
         revision_minimal_length_upstream=7 \
@@ -64,6 +65,25 @@ init(){
                 # Append packaging revision after snap version
                 --append-packaging-revision)
                     flag_append_packaging_version=true
+                ;;
+                --beta-tag-pattern*)
+                    if test "${1}" != --beta-tag-pattern; then
+                        tag_pattern_beta="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --beta-tag-pattern requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        tag_pattern_beta="${2}"
+                        shift 1
+                    fi
                 ;;
                 # Enable execution tracing
                 --debug)
@@ -112,6 +132,25 @@ init(){
                             exit 1
                         fi
                         revision_minimal_length_packaging="${2}"
+                        shift 1
+                    fi
+                ;;
+                --release-candidate-tag-pattern*)
+                    if test "${1}" != --release-candidate-tag-pattern; then
+                        tag_pattern_release_candidate="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --release-candidate-tag-pattern requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        tag_pattern_release_candidate="${2}"
                         shift 1
                     fi
                 ;;
@@ -195,6 +234,25 @@ init(){
                         shift 1
                     fi
                 ;;
+                --stable-tag-pattern*)
+                    if test "${1}" != --stable-tag-pattern; then
+                        tag_pattern_stable="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --stable-tag-pattern requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        tag_pattern_stable="${2}"
+                        shift 1
+                    fi
+                ;;
                 *)
                     printf -- \
                         'selective-checkout: Error: Invalid command-line argument.\n' \
@@ -235,12 +293,27 @@ init(){
     else
         local \
             all_release_tags \
-            last_release_tag \
-            last_release_version \
-            last_release_version_on_the_snap_store \
-            normalized_release_version
+            release_type_to_build=development-snapshot \
+            flag_version_mismatch_stable=false \
+            flag_version_mismatch_beta=false \
+            flag_version_mismatch_release_candidate=false \
+            last_beta_tag \
+            last_beta_version \
+            last_beta_version_on_the_snap_store \
+            selected_release_tag \
+            selected_release_version \
+            selected_snap_channel_version
 
-        local -A map_of_normalized_version_to_tag
+        local -A \
+            map_of_normalized_version_to_tag \
+            map_of_release_type_to_snap_channel
+
+        map_of_release_type_to_snap_channel=(
+            [stable]=stable
+            [release-candidate]=candidate
+            [beta]=beta
+            [development-snapshot]=edge
+        )
 
         if ! test -v SNAPCRAFT_PROJECT_NAME; then
             printf -- \
@@ -255,7 +328,8 @@ init(){
                 "${tag_pattern_release}"
         )"
 
-        for tag in ${all_release_tags}; do
+        local normalized_release_version
+        for tag in ${all_release_tags}; do \
             normalized_release_version="$(
                 tr _ . <<< "${tag}" \
                     | sed "s#^${tag_prefix_release}##"
@@ -263,46 +337,193 @@ init(){
 
             map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
         done
+        unset \
+            normalized_release_version \
+            tag
 
-        last_release_version="$(
-            echo -n "${!map_of_normalized_version_to_tag[@]}" \
-                | tr ' ' "\\n" \
-                | sort --version-sort \
-                | tail --lines=1
-        )"
+        local stable_pattern_grep_matching_option
+        if test -v tag_pattern_stable; then
+            stable_pattern_grep_matching_option=
+        else
+            stable_pattern_grep_matching_option=--invert-match
+            tag_pattern_stable="${tag_pattern_beta}|${tag_pattern_release_candidate}"
+        fi
 
-        last_release_tag="${map_of_normalized_version_to_tag[${last_release_version}]}"
+        if grep \
+            --extended-regexp \
+            "${stable_pattern_grep_matching_option}" \
+            --quiet \
+            -- \
+            "(${tag_pattern_stable})" \
+            <<< "${!map_of_normalized_version_to_tag[@]}"; then
+            local \
+                last_stable_tag \
+                last_stable_version \
+                last_stable_version_on_the_snap_store
 
-        # Allow the `snap info` command to fail when the snap isn't published to the stable channel
-        last_release_version_on_the_snap_store="$(
-            snap info "${SNAPCRAFT_PROJECT_NAME}" \
-                | awk '$1 == "stable:" { print $2 }' \
-                | cut --delimiter="${snap_version_postfix_seperator}" --fields=1 \
-                || true
-        )"
+            last_stable_version="$(
+                echo -n "${!map_of_normalized_version_to_tag[@]}" \
+                    | tr ' ' "\\n" \
+                    | grep \
+                        --extended-regexp \
+                        "${stable_pattern_grep_matching_option}" \
+                        -- \
+                        "(${tag_pattern_stable})" \
+                    | sort --version-sort \
+                    | tail --lines=1
+            )"
+            last_stable_tag="${map_of_normalized_version_to_tag[${last_stable_version}]}"
+            last_stable_version_on_the_snap_store="$(
+                snap_query_version \
+                    "${SNAPCRAFT_PROJECT_NAME}" \
+                    stable \
+                    "${snap_version_postfix_seperator}"
+            )"
+            if [ "${last_stable_version}" != "${last_stable_version_on_the_snap_store}" ]; then
+                flag_version_mismatch_stable=true
+            fi
+        fi
 
-        # If the latest tagged release from the repository has not been
-        # released to the stable channel, build that tag instead of the
-        # development snapshot and publish it in the edge channel
-        if [ "${last_release_version}" != "${last_release_version_on_the_snap_store}" ]; then
+        unset \
+            stable_pattern_grep_matching_option \
+            tag_pattern_stable
+
+        if grep \
+            --extended-regexp \
+            --quiet \
+            -- \
+            "${tag_pattern_release_candidate}" \
+            <<< "${!map_of_normalized_version_to_tag[@]}"; then
+            local \
+                last_release_candidate_tag \
+                last_release_candidate_version \
+                last_release_candidate_version_on_the_snap_store
+
+            last_release_candidate_version="$(
+                echo -n "${!map_of_normalized_version_to_tag[@]}" \
+                    | tr ' ' "\\n" \
+                    | grep \
+                        --extended-regexp \
+                        -- \
+                        "${tag_pattern_release_candidate}" \
+                    | sort --version-sort \
+                    | tail --lines=1
+            )"
+            last_release_candidate_tag="${map_of_normalized_version_to_tag[${last_release_candidate_version}]}"
+            last_release_candidate_version_on_the_snap_store="$(
+                snap_query_version \
+                    "${SNAPCRAFT_PROJECT_NAME}" \
+                    candidate \
+                    "${snap_version_postfix_seperator}"
+            )"
+
+            if test "${last_release_candidate_version_on_the_snap_store}" != "${last_release_candidate_version}"; then
+                flag_version_mismatch_release_candidate=true
+            fi
+        fi
+
+        unset \
+            snap_version_postfix_seperator \
+            tag_pattern_release_candidate
+
+        if grep \
+            --extended-regexp \
+            --quiet \
+            -- \
+            "${tag_pattern_beta}" \
+            <<< "${!map_of_normalized_version_to_tag[@]}"; then
+            local \
+                last_beta_tag \
+                last_beta_version \
+                last_beta_version_on_the_snap_store
+
+            last_beta_version="$(
+                echo -n "${!map_of_normalized_version_to_tag[@]}" \
+                    | tr ' ' "\\n" \
+                    | grep \
+                        --extended-regexp \
+                        -- \
+                        "${tag_pattern_beta}" \
+                    | sort --version-sort \
+                    | tail --lines=1
+            )"
+            last_beta_tag="${map_of_normalized_version_to_tag[${last_release_candidate_version}]}"
+            last_beta_version_on_the_snap_store="$(
+                snap_query_version \
+                    "${SNAPCRAFT_PROJECT_NAME}" \
+                    beta \
+                    "${snap_version_postfix_seperator}"
+            )"
+
+            if test "${last_beta_version_on_the_snap_store}" != "${last_beta_version}"; then
+                flag_version_mismatch_beta=true
+            fi
+        fi
+
+        unset \
+            map_of_normalized_version_to_tag \
+            tag_pattern_beta
+
+        if test "${flag_version_mismatch_stable}" = true; then
+            release_type_to_build=stable
+            selected_release_tag="${last_stable_tag}"
+            selected_release_version="${last_stable_version}"
+            selected_snap_channel_version="${last_stable_version_on_the_snap_store}"
+        elif test "${flag_version_mismatch_release_candidate}" = true; then
+            release_type_to_build=release-candidate
+            selected_release_tag="${last_release_candidate_tag}"
+            selected_release_version="${last_release_candidate_version}"
+            selected_snap_channel_version="${last_release_candidate_version_on_the_snap_store}"
+        elif test "${flag_version_mismatch_beta}" = true; then
+            release_type_to_build=beta
+            selected_release_tag="${last_beta_tag}"
+            selected_release_version="${last_beta_version}"
+            selected_snap_channel_version="${last_beta_version_on_the_snap_store}"
+        else
+            release_type_to_build=development-snapshot
+        fi
+
+        unset \
+            flag_version_mismatch_stable \
+            flag_version_mismatch_beta \
+            flag_version_mismatch_release_candidate \
+            last_stable_tag \
+            last_stable_version \
+            last_stable_version_on_the_snap_store \
+            last_release_candidate_tag \
+            last_release_candidate_version \
+            last_release_candidate_version_on_the_snap_store \
+            last_beta_tag \
+            last_beta_version \
+            last_beta_version_on_the_snap_store
+
+
+        if test "${release_type_to_build}" != development-snapshot; then
             printf -- \
-                "selective-checkout: Last tagged release(%s) hasn't promoted to the stable channel(%s) on the Snap Store, building tagged release instead.\\n" \
-                "${last_release_version}" \
-                "${last_release_version_on_the_snap_store}" \
+                "selective-checkout: The last tagged %s release(%s) hasn't been promoted to the %s channel(%s) on the Snap Store yet, checking out %s.\\n" \
+                "${release_type_to_build}" \
+                "${selected_release_version}" \
+                "${map_of_release_type_to_snap_channel["${release_type_to_build}"]}" \
+                "${selected_snap_channel_version}" \
+                "${selected_release_version}" \
                 >&2
             checkout_mode=release
         else
-            printf -- 'selective-checkout: Last tagged release(%s) is in the stable channel, building development snapshot\n' \
-                "${last_release_version}" \
+            printf -- 'selective-checkout: Last tagged releases is all in their respective channels, building development snapshot\n' \
                 >&2
             checkout_mode=snapshot
         fi
 
         unset \
             all_release_tags \
-            last_release_version \
-            last_release_version_on_the_snap_store
+            map_of_release_type_to_snap_channel \
+            release_type_to_build \
+            selected_release_version \
+            selected_snap_channel_version
     fi
+
+    unset \
+        tag_pattern_release
 
     case "${checkout_mode}" in
         snapshot)
@@ -311,13 +532,17 @@ init(){
         release)
             vcs_checkout_tag \
                 "${PWD}" \
-                "${last_release_tag}"
+                "${selected_release_tag}"
         ;;
         *)
             printf -- 'Error: Invalid checkout_mode selected.\n' >&2
             exit 1
         ;;
     esac
+
+    unset \
+        checkout_mode \
+        selected_release_tag
 
     upstream_version="$(
         vcs_describe_version \
@@ -348,9 +573,19 @@ init(){
                 "${postfix_dirty_marker_packaging}"
         )"
         snap_version="${upstream_version}+pkg-${packaging_revision}"
+        unset \
+            packaging_revision \
+            packaging_source_tree_root_dir \
+            postfix_dirty_marker_packaging \
+            revision_minimal_length_packaging
     else
         snap_version="${upstream_version}"
     fi
+    unset \
+        postfix_dirty_marker_upstream \
+        revision_minimal_length_upstream \
+        tag_prefix_release \
+        upstream_version
 
     printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
         "${snap_version}" >&2
@@ -359,8 +594,30 @@ init(){
             set-version \
             "${snap_version}"
     fi
-
     exit 0
+}
+
+# Query snap version for specific channel
+# FIXME: Instead of parsing the `snap info` command's output we should
+# parse the structural data output from the Snapd API instead, but it
+# is a dependency breaking change that should be dealt properly...
+snap_query_version(){
+    if test $# -ne 3; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local snap_identifier="${1}"; shift
+    local release_channel="${1}"; shift
+    local snap_version_postfix_seperator="${1}"; shift
+
+    snap info "${snap_identifier}" \
+        | awk \
+            "\$1 == \"${release_channel}:\" { print \$2 }" \
+        | cut \
+            --delimiter="${snap_version_postfix_seperator}" \
+            --fields=1 \
+        || true # Allow the command to fail, it will make the version mismatch nonetheless
 }
 
 # Determine which VCS is used
