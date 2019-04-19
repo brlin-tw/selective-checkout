@@ -43,6 +43,7 @@ init(){
         flag_dry_run=false \
         flag_debug_tracing=false \
         flag_force_snapshot=false \
+        flag_force_stable=false \
         packaging_revision \
         postfix_dirty_marker_packaging=-d \
         postfix_dirty_marker_upstream=-dirty \
@@ -96,6 +97,9 @@ init(){
                 # Force building development snapshot regardless the status of the snap
                 --force-snapshot)
                     flag_force_snapshot=true
+                ;;
+                --force-stable)
+                    flag_force_stable=true
                 ;;
                 --packaging-dirty-marker-postfix*)
                     if test "${1}" != --packaging-dirty-marker-postfix; then
@@ -381,6 +385,13 @@ init(){
             if [ "${last_stable_version}" != "${last_stable_version_on_the_snap_store}" ]; then
                 flag_version_mismatch_stable=true
             fi
+        else
+            if test "${flag_force_stable}" = true; then
+                printf -- \
+                    'selective-checkout: Error: --force-stable specified, but no stable release tags are found.\n' \
+                    >&2
+                exit 1
+            fi
         fi
 
         unset \
@@ -461,7 +472,8 @@ init(){
             snap_version_postfix_seperator \
             tag_pattern_beta
 
-        if test "${flag_version_mismatch_stable}" = true; then
+        if test "${flag_version_mismatch_stable}" = true \
+             || test "${flag_force_stable}" = true; then
             release_type_to_build=stable
             selected_release_tag="${last_stable_tag}"
             selected_release_version="${last_stable_version}"
