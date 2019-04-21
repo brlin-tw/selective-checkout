@@ -335,10 +335,7 @@ init(){
         local normalized_release_version
         for tag in ${all_release_tags}; do \
             normalized_release_version="$(
-                # This is not a simple substitution
-                # shellcheck disable=SC2001
-                sed "s#^${tag_prefix_release}##" <<< "${tag}" \
-                    | tr _ .
+                normalize_version <<< "${tag}"
             )"
 
             map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
@@ -560,7 +557,7 @@ init(){
             "${PWD}" \
             "${revision_minimal_length_upstream}" \
             "${postfix_dirty_marker_upstream}" \
-            | sed "s#^${tag_prefix_release}##"
+            | normalize_version
     )"
 
     if test "${flag_append_packaging_version}" = true; then
@@ -606,6 +603,13 @@ init(){
             "${snap_version}"
     fi
     exit 0
+}
+
+normalize_version(){
+    # This is not a simple substitution
+    # shellcheck disable=SC2001
+    sed "s#^${tag_prefix_release}##" \
+        | tr _ .
 }
 
 # Query snap version for specific channel
