@@ -335,8 +335,10 @@ init(){
         local normalized_release_version
         for tag in ${all_release_tags}; do \
             normalized_release_version="$(
-                tr _ . <<< "${tag}" \
-                    | sed "s#^${tag_prefix_release}##"
+                # This is not a simple substitution
+                # shellcheck disable=SC2001
+                sed "s#^${tag_prefix_release}##" <<< "${tag}" \
+                    | tr _ .
             )"
 
             map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
