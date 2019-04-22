@@ -158,6 +158,25 @@ init(){
                         shift 1
                     fi
                 ;;
+                --release-tag-pattern*)
+                    if test "${1}" != --release-tag-pattern; then
+                        tag_pattern_release="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                'selective-checkout: Error: --release-tag-pattern requires one argument.\n' \
+                                >&2
+                            exit 1
+                        fi
+                        tag_pattern_release="${2}"
+                        shift 1
+                    fi
+                ;;
                 # Set the prefix for all release tags(default: `v`), the prefix will be stripped from snap version string
                 --release-tag-prefix*)
                     if test "${1}" != --release-tag-prefix; then
