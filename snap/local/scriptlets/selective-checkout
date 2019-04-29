@@ -496,12 +496,21 @@ init(){
             selected_release_tag="${last_stable_tag}"
             selected_release_version="${last_stable_version}"
             selected_snap_channel_version="${last_stable_version_on_the_snap_store}"
-        elif test "${flag_version_mismatch_release_candidate}" = true; then
+        elif test "${flag_version_mismatch_release_candidate}" = true \
+            && version_former_is_greater_than_latter \
+                "${last_release_candidate_version}" \
+                "${last_stable_version}"; then
             release_type_to_build=release-candidate
             selected_release_tag="${last_release_candidate_tag}"
             selected_release_version="${last_release_candidate_version}"
             selected_snap_channel_version="${last_release_candidate_version_on_the_snap_store}"
-        elif test "${flag_version_mismatch_beta}" = true; then
+        elif test "${flag_version_mismatch_beta}" = true \
+            && version_former_is_greater_than_latter \
+                "${last_beta_version}" \
+                "${last_release_candidate_version}" \
+            && version_former_is_greater_than_latter \
+                "${last_beta_version}" \
+                "${last_stable_version}"; then
             release_type_to_build=beta
             selected_release_tag="${last_beta_tag}"
             selected_release_version="${last_beta_version}"
@@ -1180,6 +1189,36 @@ vcs_describe_revision(){
             return 0
         ;;
     esac
+}
+
+version_former_is_greater_than_latter(){
+    if test $# -ne 2; then
+        printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
+        exit 1
+    fi
+
+    local -r former="${1}"; shift
+    local -r latter="${1}"; shift
+
+    local newer_version
+
+    newer_version="$(
+        printf \
+            -- \
+            '%s\n%s' \
+            "${former}" \
+            "${latter}" \
+            | sort \
+                --version-sort \
+            | head \
+                --lines=1
+    )"
+
+    if test "${newer_version}" = "${former}"; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 init "${@}"
