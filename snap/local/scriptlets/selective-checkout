@@ -497,20 +497,29 @@ init(){
             selected_release_version="${last_stable_version}"
             selected_snap_channel_version="${last_stable_version_on_the_snap_store}"
         elif test "${flag_version_mismatch_release_candidate}" = true \
-            && version_former_is_greater_than_latter \
-                "${last_release_candidate_version}" \
-                "${last_stable_version}"; then
+            && (
+                test -v last_stable_version \
+                    && version_former_is_greater_than_latter \
+                        "${last_release_candidate_version}" \
+                        "${last_stable_version}"
+            ); then
             release_type_to_build=release-candidate
             selected_release_tag="${last_release_candidate_tag}"
             selected_release_version="${last_release_candidate_version}"
             selected_snap_channel_version="${last_release_candidate_version_on_the_snap_store}"
         elif test "${flag_version_mismatch_beta}" = true \
-            && version_former_is_greater_than_latter \
-                "${last_beta_version}" \
-                "${last_release_candidate_version}" \
-            && version_former_is_greater_than_latter \
-                "${last_beta_version}" \
-                "${last_stable_version}"; then
+            && (
+                test -v last_release_candidate_version \
+                    && version_former_is_greater_than_latter \
+                        "${last_beta_version}" \
+                        "${last_release_candidate_version}"
+            ) \
+            && (
+                test -v last_stable_version \
+                    && version_former_is_greater_than_latter \
+                        "${last_release_candidate_version}" \
+                        "${last_stable_version}"
+            ); then
             release_type_to_build=beta
             selected_release_tag="${last_beta_tag}"
             selected_release_version="${last_beta_version}"
