@@ -297,6 +297,9 @@ init(){
     if test "${flag_force_snapshot}" = true; then
         printf -- 'selective-checkout: Force building development snapshots\n' >&2
         checkout_mode=snapshot
+    elif test "${flag_force_stable}" = true; then
+        printf -- 'selective-checkout: Force building stable releases\n' >&2
+        checkout_mode=release
     elif test "$(vcs_detect "${PWD}")" = not_found; then
         printf -- 'selective-checkout: Build from source archive\n' >&2
         checkout_mode=snapshot
