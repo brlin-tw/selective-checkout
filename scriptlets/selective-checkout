@@ -497,20 +497,29 @@ init(){
             selected_release_version="${last_stable_version}"
             selected_snap_channel_version="${last_stable_version_on_the_snap_store}"
         elif test "${flag_version_mismatch_release_candidate}" = true \
-            && version_former_is_greater_than_latter \
-                "${last_release_candidate_version}" \
-                "${last_stable_version}"; then
+            && (
+                test -v last_stable_version \
+                    && version_former_is_greater_than_latter \
+                        "${last_release_candidate_version}" \
+                        "${last_stable_version}"
+            ); then
             release_type_to_build=release-candidate
             selected_release_tag="${last_release_candidate_tag}"
             selected_release_version="${last_release_candidate_version}"
             selected_snap_channel_version="${last_release_candidate_version_on_the_snap_store}"
         elif test "${flag_version_mismatch_beta}" = true \
-            && version_former_is_greater_than_latter \
-                "${last_beta_version}" \
-                "${last_release_candidate_version}" \
-            && version_former_is_greater_than_latter \
-                "${last_beta_version}" \
-                "${last_stable_version}"; then
+            && (
+                test -v last_release_candidate_version \
+                    && version_former_is_greater_than_latter \
+                        "${last_beta_version}" \
+                        "${last_release_candidate_version}"
+            ) \
+            && (
+                test -v last_stable_version \
+                    && version_former_is_greater_than_latter \
+                        "${last_release_candidate_version}" \
+                        "${last_stable_version}"
+            ); then
             release_type_to_build=beta
             selected_release_tag="${last_beta_tag}"
             selected_release_version="${last_beta_version}"
@@ -589,29 +598,15 @@ init(){
     )"
 
     if test "${flag_append_packaging_version}" = true; then
-        # WORKAROUND:
-        #   Allow fetching project revision in multipass build
-        #   environment, which uses out-of-tree build and packaging
-        #   source tree repo location can't be determined via environment
-        #   Unable to determine project version info in multipass build environment - snapcraft - snapcraft.io
-        #   https://forum.snapcraft.io/t/unable-to-determine-project-version-info-in-multipass-build-environment/10416
-        if test -d /root/project; then
-            packaging_source_tree_root_dir=/root/project
-        else
-            # parts/_part_name_/src
-            packaging_source_tree_root_dir=../../..
-        fi
-
         packaging_revision="$(
             vcs_describe_revision \
-                "${packaging_source_tree_root_dir}" \
+                "${SNAPCRAFT_PROJECT_DIR}" \
                 "${revision_minimal_length_packaging}" \
                 "${postfix_dirty_marker_packaging}"
         )"
         snap_version="${upstream_version}+pkg-${packaging_revision}"
         unset \
             packaging_revision \
-            packaging_source_tree_root_dir \
             postfix_dirty_marker_packaging \
             revision_minimal_length_packaging
     else
