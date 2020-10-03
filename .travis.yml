@@ -31,7 +31,7 @@ git:
 
 ## Build Environment Specification
 ### Selection of ubuntu release for build environment
-dist: xenial
+dist: focal
 
 ### Services pre-installed in the CI environment to start up
 ### https://docs.travis-ci.com/user/database-setup/#Starting-Services
