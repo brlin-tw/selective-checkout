@@ -83,7 +83,6 @@ install:
 
   # Sometimes dependencies needs to be build from source code and install/setup to use it
   # https://docs.travis-ci.com/user/installing-dependencies/#Installing-Projects-from-Source
-
   - pip install --user pre-commit
 
 ### You can run custom commands before the script/build step
