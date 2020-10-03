@@ -7,7 +7,7 @@
 # infrastructure only supports build on code push (but not new tagged
 # releases) at this time.
 # https://forum.snapcraft.io/t/selective-checkout-check-out-the-tagged-release-revision-if-it-isnt-promoted-to-the-stable-channel/10617
-# 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com> © 2018
+# 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com> © 2020
 
 set \
     -o errexit \
@@ -16,10 +16,11 @@ set \
     -o pipefail
 
 for required_command in \
-    awk \
+    curl \
     cut \
+    head \
+    jq \
     sed \
-    snap \
     sort \
     tail \
     tr; do
@@ -635,27 +636,73 @@ normalize_version(){
         | tr _ .
 }
 
-# Query snap version for specific channel
-# FIXME: Instead of parsing the `snap info` command's output we should
-# parse the structural data output from the Snapd API instead, but it
-# is a dependency breaking change that should be dealt properly...
+# Query snap version for specific channel, we use the Snap Store API
+# http://api.snapcraft.io/docs/info.html#snap_info
 snap_query_version(){
     if test $# -ne 3; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
         exit 1
     fi
 
+    # positional parameters
     local snap_identifier="${1}"; shift
     local release_channel="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
 
-    snap info "${snap_identifier}" \
-        | awk \
-            "\$1 == \"${release_channel}:\" { print \$2 }" \
-        | cut \
-            --delimiter="${snap_version_postfix_seperator}" \
-            --fields=1 \
-        || true # Allow the command to fail, it will make the version mismatch nonetheless
+    local snap_revision_in_release_channel
+    snap_revision_in_release_channel="$(
+        curl \
+            --fail \
+            --silent \
+            --show-error \
+            --header 'Snap-Device-Series: 16' \
+            https://api.snapcraft.io/v2/snaps/info/"${snap_identifier}" \
+            | jq \
+                ".\"channel-map\"[]
+                 | select(.channel.name == \"${release_channel}\").revision" \
+            | sort \
+                --reverse \
+            | head \
+                --lines=1
+    )"
+    if test "${?}" != 0; then
+        printf -- \
+            '%s: Error: Unable to query the snap revision in the %s channel from the Snap Store.\n' \
+            "${FUNCNAME[0]}" \
+            "${release_channel}" \
+            1>&2
+        return 1
+    fi
+
+    local snap_version_in_release_channel
+    snap_version_in_release_channel="$(
+        curl \
+            --fail \
+            --silent \
+            --show-error \
+            --header 'Snap-Device-Series: 16' \
+            https://api.snapcraft.io/v2/snaps/info/"${snap_identifier}" \
+            | jq \
+                --raw-output \
+                ".\"channel-map\"[]
+                | select(
+                    .channel.name == \"${release_channel}\"
+                        and .revision == ${snap_revision_in_release_channel}
+                ).version" \
+            | cut \
+                --delimiter="${snap_version_postfix_seperator}" \
+                --fields=1
+    )"
+    if test "${?}" != 0; then
+        printf -- \
+            '%s: Error: Unable to query the snap version of the %s revision from the Snap Store.\n' \
+            "${FUNCNAME[0]}" \
+            "${snap_revision_in_release_channel}" \
+            1>&2
+        return 2
+    fi
+
+    printf %s "${snap_version_in_release_channel}"
 }
 
 # Determine which VCS is used
