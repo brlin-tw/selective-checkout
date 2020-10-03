@@ -102,7 +102,7 @@ before_cache: true
 cache:
   pip: true
   directories:
-    - $HOME/pre-commit
+    - $HOME/.cache/pre-commit
 
 ### Commands if build phase fails
 after_failure: true
