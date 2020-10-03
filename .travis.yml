@@ -7,7 +7,7 @@
 ## Project-specific settings
 ### Main programming language used in the project
 ### https://docs.travis-ci.com/user/languages
-language: minimal
+language: bash
 
 ### Git related settings
 git:
