@@ -695,11 +695,13 @@ snap_query_version(){
     )"
     if test "${?}" != 0; then
         printf -- \
-            '%s: Error: Unable to query the snap version of the %s revision from the Snap Store.\n' \
+            '%s: Warning: Unable to query the snap version of the %s revision from the Snap Store.\n' \
             "${FUNCNAME[0]}" \
             "${snap_revision_in_release_channel}" \
             1>&2
-        return 2
+        printf -- \
+            'UNKNOWN'
+        return 0
     fi
 
     printf %s "${snap_version_in_release_channel}"
