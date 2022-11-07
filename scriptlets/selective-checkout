@@ -59,234 +59,23 @@ init(){
         snap_version_postfix_seperator=+ \
         upstream_version
 
-    while true; do
-        if test "${#}" -eq 0; then
-            break
-        else
-            case "${1}" in
-                # Append packaging revision after snap version
-                --append-packaging-revision)
-                    flag_append_packaging_version=true
-                ;;
-                --beta-tag-pattern*)
-                    if test "${1}" != --beta-tag-pattern; then
-                        tag_pattern_beta="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --beta-tag-pattern requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        tag_pattern_beta="${2}"
-                        shift 1
-                    fi
-                ;;
-                # Enable execution tracing
-                --debug)
-                    flag_debug_tracing=true
-                ;;
-                # Don't run snapcraftctl for testing purpose
-                --dry-run)
-                    flag_dry_run=true
-                ;;
-                # Force building development snapshot regardless the status of the snap
-                --force-snapshot)
-                    flag_force_snapshot=true
-                ;;
-                --force-stable)
-                    flag_force_stable=true
-                ;;
-                --packaging-dirty-marker-postfix*)
-                    if test "${1}" != --packaging-dirty-marker-postfix; then
-                        postfix_dirty_marker_packaging="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --packaging-dirty-marker-postfix requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        postfix_dirty_marker_packaging="${2}"
-                        shift 1
-                    fi
-                ;;
-                --packaging-revision-minimal-length*)
-                    if test "${1}" != --packaging-revision-minimal-length; then
-                        revision_minimal_length_packaging="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --packaging-revision-minimal-length requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        revision_minimal_length_packaging="${2}"
-                        shift 1
-                    fi
-                ;;
-                --release-candidate-tag-pattern*)
-                    if test "${1}" != --release-candidate-tag-pattern; then
-                        tag_pattern_release_candidate="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --release-candidate-tag-pattern requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        tag_pattern_release_candidate="${2}"
-                        shift 1
-                    fi
-                ;;
-                --release-tag-pattern*)
-                    if test "${1}" != --release-tag-pattern; then
-                        tag_pattern_release="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --release-tag-pattern requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        tag_pattern_release="${2}"
-                        shift 1
-                    fi
-                ;;
-                # Set the prefix for all release tags(default: `v`), the prefix will be stripped from snap version string
-                --release-tag-prefix*)
-                    if test "${1}" != --release-tag-prefix; then
-                        tag_prefix_release="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --release-tag-prefix requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        tag_prefix_release="${2}"
-                        shift 1
-                    fi
-                ;;
-                # Set the seperator for the postfixed string in the snap version string
-                # the postfixed string will be stripped before comparing with the stripped
-                # uptream release version
-                --snap-postfix-seperator*)
-                    if test "${1}" != --snap-postfix-seperator; then
-                        snap_version_postfix_seperator="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --snap-postfix-seperator requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        snap_version_postfix_seperator="${2}"
-                        shift 1
-                    fi
-                ;;
-                --stable-tag-pattern*)
-                    if test "${1}" != --stable-tag-pattern; then
-                        tag_pattern_stable="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --stable-tag-pattern requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        tag_pattern_stable="${2}"
-                        shift 1
-                    fi
-                ;;
-                --upstream-dirty-marker-postfix*)
-                    if test "${1}" != --upstream-dirty-marker-postfix; then
-                        postfix_dirty_marker_upstream="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --upstream-dirty-marker-postfix requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        postfix_dirty_marker_upstream="${2}"
-                        shift 1
-                    fi
-                ;;
-                --upstream-revision-minimal-length*)
-                    if test "${1}" != --upstream-revision-minimal-length; then
-                        revision_minimal_length_upstream="$(
-                            cut \
-                                --delimiter== \
-                                --fields=2 \
-                                <<< "${1}"
-                        )"
-                    else
-                        if test "${#}" -eq 0; then
-                            printf -- \
-                                'selective-checkout: Error: --upstream-revision-minimal-length requires one argument.\n' \
-                                >&2
-                            exit 1
-                        fi
-                        revision_minimal_length_upstream="${2}"
-                        shift 1
-                    fi
-                ;;
-                *)
-                    printf -- \
-                        'selective-checkout: Error: Invalid command-line argument.\n' \
-                        >&2
-                    exit 1
-                ;;
-            esac
-            shift 1
-        fi
-    done
+    determining_runtime_parameters \
+        flag_append_packaging_version \
+        tag_pattern_beta \
+        flag_debug_tracing \
+        flag_dry_run \
+        flag_force_snapshot \
+        flag_force_stable \
+        postfix_dirty_marker_packaging \
+        revision_minimal_length_packaging \
+        tag_pattern_release_candidate \
+        tag_pattern_release \
+        tag_prefix_release \
+        snap_version_postfix_seperator \
+        tag_pattern_stable \
+        postfix_dirty_marker_upstream \
+        revision_minimal_length_upstream \
+        "${@}"
 
     if test "${flag_debug_tracing}" = true; then
         set -o xtrace
@@ -394,6 +183,7 @@ init(){
                     | sort --version-sort \
                     | tail --lines=1
             )"
+
             last_stable_tag="${map_of_normalized_version_to_tag[${last_stable_version}]}"
             last_stable_version_on_the_snap_store="$(
                 snap_query_version \
@@ -627,6 +417,314 @@ init(){
             "${snap_version}"
     fi
     exit 0
+}
+
+determining_runtime_parameters(){
+    local -n flag_append_packaging_version_ref="${1}"; shift
+    local -n tag_pattern_beta_ref="${1}"; shift
+    local -n flag_debug_tracing_ref="${1}"; shift
+    local -n flag_dry_run_ref="${1}"; shift
+    local -n flag_force_snapshot_ref="${1}"; shift
+    local -n flag_force_stable_ref="${1}"; shift
+    local -n postfix_dirty_marker_packaging_ref="${1}"; shift
+    local -n revision_minimal_length_packaging_ref="${1}"; shift
+    local -n tag_pattern_release_candidate_ref="${1}"; shift
+    local -n tag_pattern_release_ref="${1}"; shift
+    local -n tag_prefix_release_ref="${1}"; shift
+    local -n snap_version_postfix_seperator_ref="${1}"; shift
+    local -n tag_pattern_stable_ref="${1}"; shift
+    local -n postfix_dirty_marker_upstream_ref="${1}"; shift
+    local -n revision_minimal_length_upstream_ref="${1}"; shift
+
+    while true; do
+        if test "${#}" -eq 0; then
+            break
+        else
+            case "${1}" in
+                # Append packaging revision after snap version
+                --append-packaging-revision)
+                    # Indirect access
+                    # shellcheck disable=SC2034
+                    flag_append_packaging_version_ref=true
+                ;;
+                --beta-tag-pattern*)
+                    if test "${1}" != --beta-tag-pattern; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_beta_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --beta-tag-pattern requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_beta_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                # Enable execution tracing
+                --debug)
+                    # Indirect access
+                    # shellcheck disable=SC2034
+                    flag_debug_tracing_ref=true
+                ;;
+                # Don't run snapcraftctl for testing purpose
+                --dry-run)
+                    # Indirect access
+                    # shellcheck disable=SC2034
+                    flag_dry_run_ref=true
+                ;;
+                # Force building development snapshot regardless the status of the snap
+                --force-snapshot)
+                    # Indirect access
+                    # shellcheck disable=SC2034
+                    flag_force_snapshot_ref=true
+                ;;
+                --force-stable)
+                    # Indirect access
+                    # shellcheck disable=SC2034
+                    flag_force_stable_ref=true
+                ;;
+                --packaging-dirty-marker-postfix*)
+                    if test "${1}" != --packaging-dirty-marker-postfix; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        postfix_dirty_marker_packaging_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --packaging-dirty-marker-postfix requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        postfix_dirty_marker_packaging_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                --packaging-revision-minimal-length*)
+                    if test "${1}" != --packaging-revision-minimal-length; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        revision_minimal_length_packaging_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --packaging-revision-minimal-length requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        revision_minimal_length_packaging_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                --release-candidate-tag-pattern*)
+                    if test "${1}" != --release-candidate-tag-pattern; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_release_candidate_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --release-candidate-tag-pattern requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_release_candidate_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                --release-tag-pattern*)
+                    if test "${1}" != --release-tag-pattern; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_release_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --release-tag-pattern requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_release_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                # Set the prefix for all release tags(default: `v`), the prefix will be stripped from snap version string
+                --release-tag-prefix*)
+                    if test "${1}" != --release-tag-prefix; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_prefix_release_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --release-tag-prefix requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_prefix_release_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                # Set the seperator for the postfixed string in the snap version string
+                # the postfixed string will be stripped before comparing with the stripped
+                # uptream release version
+                --snap-postfix-seperator*)
+                    if test "${1}" != --snap-postfix-seperator; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        snap_version_postfix_seperator_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --snap-postfix-seperator requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        snap_version_postfix_seperator_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                --stable-tag-pattern*)
+                    if test "${1}" != --stable-tag-pattern; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_stable_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --stable-tag-pattern requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        tag_pattern_stable_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                --upstream-dirty-marker-postfix*)
+                    if test "${1}" != --upstream-dirty-marker-postfix; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        postfix_dirty_marker_upstream_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --upstream-dirty-marker-postfix requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        postfix_dirty_marker_upstream_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                --upstream-revision-minimal-length*)
+                    if test "${1}" != --upstream-revision-minimal-length; then
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        revision_minimal_length_upstream_ref="$(
+                            cut \
+                                --delimiter== \
+                                --fields=2 \
+                                <<< "${1}"
+                        )"
+                    else
+                        if test "${#}" -eq 0; then
+                            printf -- \
+                                '%s: Error: --upstream-revision-minimal-length requires one argument.\n' \
+                                "${FUNCNAME[0]}" \
+                                >&2
+                            exit 1
+                        fi
+                        # Indirect access
+                        # shellcheck disable=SC2034
+                        revision_minimal_length_upstream_ref="${2}"
+                        shift 1
+                    fi
+                ;;
+                *)
+                    printf -- \
+                        '%s: Error: Invalid command-line argument.\n' \
+                        "${FUNCNAME[0]}" \
+                        >&2
+                    exit 1
+                ;;
+            esac
+            shift 1
+        fi
+    done
 }
 
 normalize_version(){
