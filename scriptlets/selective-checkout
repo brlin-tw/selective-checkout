@@ -20,6 +20,7 @@ for required_command in \
     cut \
     head \
     jq \
+    realpath \
     sed \
     sort \
     tail \
@@ -34,6 +35,14 @@ for required_command in \
 done
 
 init(){
+    script="$(
+        realpath \
+            --strip \
+            "${BASH_SOURCE[0]}"
+    )"
+    script_filename="${script##*/}"
+    script_name="${script_filename%%.*}"
+
     # checkout_mode:
     # - snapshot: Build as-is
     # - release: Build the latest tagged release
@@ -85,22 +94,32 @@ init(){
         "${PWD}"
 
     if test "${flag_force_snapshot}" = true; then
-        printf -- 'selective-checkout: Force building development snapshots\n' >&2
+        printf -- \
+            '%s: Force building development snapshots\n' \
+            "${script_name}" \
+            >&2
         checkout_mode=snapshot
     elif test "$(vcs_detect "${PWD}")" = not_found; then
-        printf -- 'selective-checkout: Build from source archive\n' >&2
+        printf -- \
+            '%s: Build from source archive\n' \
+            "${script_name}" \
+            >&2
         checkout_mode=snapshot
     elif vcs_is_dirty "${PWD}"; then
         # If tracked files are modified
         # or staging area not empty
-        printf -- 'selective-checkout: Working tree is dirty, building development snapshot with additional changes\n' >&2
+        printf -- \
+            '%s: Working tree is dirty, building development snapshot with additional changes\n' \
+            "${script_name}" \
+            >&2
         checkout_mode=snapshot
     elif ! \
         vcs_has_release_tags \
             "${PWD}" \
             "${tag_pattern_release}"; then
         printf -- \
-            'Warning: No release tags found, assuming building from development snapshots.\n' \
+            '%s: Warning: No release tags found, assuming building from development snapshots.\n' \
+            "${script_name}" \
             1>&2
         checkout_mode=snapshot
     else
@@ -130,7 +149,8 @@ init(){
 
         if ! test -v SNAPCRAFT_PROJECT_NAME; then
             printf -- \
-                "selective-checkout: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
+                "%S: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
+                "${script_name}" \
                 >&2
             exit 1
         fi
@@ -197,7 +217,8 @@ init(){
         else
             if test "${flag_force_stable}" = true; then
                 printf -- \
-                    'selective-checkout: Error: --force-stable specified, but no stable release tags are found.\n' \
+                    '%s: Error: --force-stable specified, but no stable release tags are found.\n' \
+                    "${script_name}" \
                     >&2
                 exit 1
             fi
@@ -336,7 +357,8 @@ init(){
 
         if test "${release_type_to_build}" != development-snapshot; then
             printf -- \
-                "selective-checkout: The last tagged %s release(%s) hasn't been promoted to the %s channel(%s) on the Snap Store yet, checking out %s.\\n" \
+                "%s: The last tagged %s release(%s) hasn't been promoted to the %s channel(%s) on the Snap Store yet, checking out %s.\\n" \
+                "${script_name}" \
                 "${release_type_to_build}" \
                 "${selected_release_version}" \
                 "${map_of_release_type_to_snap_channel["${release_type_to_build}"]}" \
@@ -345,7 +367,8 @@ init(){
                 >&2
             checkout_mode=release
         else
-            printf -- 'selective-checkout: Last tagged releases is all in their respective channels, building development snapshot\n' \
+            printf -- '%s: Last tagged releases is all in their respective channels, building development snapshot\n' \
+                "${script_name}" \
                 >&2
             checkout_mode=snapshot
         fi
@@ -371,7 +394,10 @@ init(){
                 "${selected_release_tag}"
         ;;
         *)
-            printf -- 'Error: Invalid checkout_mode selected.\n' >&2
+            printf -- \
+                '%s: Error: Invalid checkout_mode selected.\n' \
+                "${script_name}" \
+                >&2
             exit 1
         ;;
     esac
@@ -409,8 +435,10 @@ init(){
         tag_prefix_release \
         upstream_version
 
-    printf -- 'selective-checkout: Snap version determined to be "%s".\n' \
-        "${snap_version}" >&2
+    printf -- '%s: Snap version determined to be "%s".\n' \
+        "${script_name}" \
+        "${snap_version}" \
+        >&2
     if test "${flag_dry_run}" = false; then
         snapcraftctl \
             set-version \
