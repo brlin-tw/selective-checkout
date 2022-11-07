@@ -96,22 +96,19 @@ init(){
     if test "${flag_force_snapshot}" = true; then
         printf -- \
             '%s: Info: Force building development snapshots\n' \
-            "${script_name}" \
-            >&2
+            "${script_name}"
         checkout_mode=snapshot
     elif test "$(vcs_detect "${PWD}")" = not_found; then
         printf -- \
             '%s: Info: Build from source archive\n' \
-            "${script_name}" \
-            >&2
+            "${script_name}"
         checkout_mode=snapshot
     elif vcs_is_dirty "${PWD}"; then
         # If tracked files are modified
         # or staging area not empty
         printf -- \
             '%s: Info: Working tree is dirty, building development snapshot with additional changes\n' \
-            "${script_name}" \
-            >&2
+            "${script_name}"
         checkout_mode=snapshot
     elif ! \
         vcs_has_release_tags \
@@ -363,13 +360,11 @@ init(){
                 "${selected_release_version}" \
                 "${map_of_release_type_to_snap_channel["${release_type_to_build}"]}" \
                 "${selected_snap_channel_version}" \
-                "${selected_release_version}" \
-                >&2
+                "${selected_release_version}"
             checkout_mode=release
         else
             printf -- '%s: Info: Last tagged releases is all in their respective channels, building development snapshot\n' \
-                "${script_name}" \
-                >&2
+                "${script_name}"
             checkout_mode=snapshot
         fi
 
@@ -437,8 +432,7 @@ init(){
 
     printf -- '%s: Info: Snap version determined to be "%s".\n' \
         "${script_name}" \
-        "${snap_version}" \
-        >&2
+        "${snap_version}"
     if test "${flag_dry_run}" = false; then
         snapcraftctl \
             set-version \
