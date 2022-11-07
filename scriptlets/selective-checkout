@@ -163,7 +163,7 @@ init(){
         )"
 
         local normalized_release_version
-        for tag in ${all_release_tags}; do \
+        for tag in ${all_release_tags}; do
             normalized_release_version="$(
                 normalize_version <<< "${tag}"
             )"
