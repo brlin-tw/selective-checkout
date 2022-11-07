@@ -649,6 +649,8 @@ snap_query_version(){
     local release_channel="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
 
+    snap_arch="${SNAP_ARCH:-amd64}"
+
     local snap_revision_in_release_channel
     snap_revision_in_release_channel="$(
         curl \
@@ -659,7 +661,10 @@ snap_query_version(){
             https://api.snapcraft.io/v2/snaps/info/"${snap_identifier}" \
             | jq \
                 ".\"channel-map\"[]
-                 | select(.channel.name == \"${release_channel}\").revision" \
+                 | select(
+                        .channel.name == \"${release_channel}\"
+                        and .channel.architecture == \"${snap_arch}\"
+                ).revision" \
             | sort \
                 --reverse \
             | head \
