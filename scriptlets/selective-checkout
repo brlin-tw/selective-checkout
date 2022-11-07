@@ -95,13 +95,13 @@ init(){
 
     if test "${flag_force_snapshot}" = true; then
         printf -- \
-            '%s: Force building development snapshots\n' \
+            '%s: Info: Force building development snapshots\n' \
             "${script_name}" \
             >&2
         checkout_mode=snapshot
     elif test "$(vcs_detect "${PWD}")" = not_found; then
         printf -- \
-            '%s: Build from source archive\n' \
+            '%s: Info: Build from source archive\n' \
             "${script_name}" \
             >&2
         checkout_mode=snapshot
@@ -109,7 +109,7 @@ init(){
         # If tracked files are modified
         # or staging area not empty
         printf -- \
-            '%s: Working tree is dirty, building development snapshot with additional changes\n' \
+            '%s: Info: Working tree is dirty, building development snapshot with additional changes\n' \
             "${script_name}" \
             >&2
         checkout_mode=snapshot
@@ -357,7 +357,7 @@ init(){
 
         if test "${release_type_to_build}" != development-snapshot; then
             printf -- \
-                "%s: The last tagged %s release(%s) hasn't been promoted to the %s channel(%s) on the Snap Store yet, checking out %s.\\n" \
+                "%s: Info: The last tagged %s release(%s) hasn't been promoted to the %s channel(%s) on the Snap Store yet, checking out %s.\\n" \
                 "${script_name}" \
                 "${release_type_to_build}" \
                 "${selected_release_version}" \
@@ -367,7 +367,7 @@ init(){
                 >&2
             checkout_mode=release
         else
-            printf -- '%s: Last tagged releases is all in their respective channels, building development snapshot\n' \
+            printf -- '%s: Info: Last tagged releases is all in their respective channels, building development snapshot\n' \
                 "${script_name}" \
                 >&2
             checkout_mode=snapshot
@@ -435,7 +435,7 @@ init(){
         tag_prefix_release \
         upstream_version
 
-    printf -- '%s: Snap version determined to be "%s".\n' \
+    printf -- '%s: Info: Snap version determined to be "%s".\n' \
         "${script_name}" \
         "${snap_version}" \
         >&2
