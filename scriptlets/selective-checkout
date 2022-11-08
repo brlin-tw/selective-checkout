@@ -124,6 +124,9 @@ init(){
             1>&2
         checkout_mode=snapshot
     else
+        printf -- \
+            '%s: Info: Determining version to be built...\n' \
+            "${script_name}"
         local \
             all_release_tags \
             release_type_to_build=development-snapshot \
