@@ -130,7 +130,6 @@ init(){
             '%s: Info: Determining version to be built...\n' \
             "${script_name}"
         local \
-            all_release_tags \
             release_type_to_build=development-snapshot \
             flag_version_mismatch_stable=false \
             flag_version_mismatch_beta=false \
@@ -142,6 +141,7 @@ init(){
             selected_release_version \
             selected_snap_channel_version
 
+        local -a all_release_tags=()
         local -A \
             map_of_normalized_version_to_tag \
             map_of_release_type_to_snap_channel
@@ -161,14 +161,14 @@ init(){
             exit 1
         fi
 
-        all_release_tags="$(
+        all_release_tags=($(
             vcs_query_release_tags \
                 "${PWD}" \
                 "${tag_pattern_release}"
-        )"
+        ))
 
         local normalized_release_version
-        for tag in ${all_release_tags}; do
+        for tag in "${all_release_tags[@]}"; do
             if test "${flag_debug}" == true; then
                 printf -- \
                     '%s: DEBUG: Found release tag: %s\n' \
