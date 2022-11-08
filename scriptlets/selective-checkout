@@ -47,6 +47,9 @@ init(){
     # - snapshot: Build as-is
     # - release: Build the latest tagged release
     # tag_pattern_release: We assume all tags contains dots or underscores release tags
+    #
+    # Indirection used
+    # shellcheck disable=SC2034
     local \
         checkout_mode \
         flag_append_packaging_version=false \
@@ -134,6 +137,9 @@ init(){
             flag_version_mismatch_stable=false \
             flag_version_mismatch_beta=false \
             flag_version_mismatch_release_candidate=false \
+            last_stable_tag \
+            last_stable_version \
+            last_stable_version_on_the_snap_store \
             last_beta_tag \
             last_beta_version \
             last_beta_version_on_the_snap_store \
@@ -198,94 +204,18 @@ init(){
         printf -- \
             '%s: INFO: Detecting stable releases...\n' \
             "${script_name}"
-        local stable_tag_pattern_grep_opts
-        if test -v tag_pattern_stable; then
-            stable_tag_pattern_grep_opts=
-        else
-            stable_tag_pattern_grep_opts=--invert-match
-            tag_pattern_stable="${tag_pattern_beta}|${tag_pattern_release_candidate}"
-        fi
-
-        local -a stable_tags=()
-        mapfile \
-            -t stable_tags \
-            < <(
-            echo -n "${all_release_tags[@]}" \
-                | tr ' ' "\\n" \
-                | grep \
-                    --extended-regexp \
-                    ${stable_tag_pattern_grep_opts} \
-                    --regexp="(${tag_pattern_stable})"
-        )
-
-        if test "${#stable_tags[@]}" -eq 0; then
-            if test "${flag_force_stable}" = true; then
-                printf -- \
-                    '%s: Error: --force-stable specified, but no stable release tags are found.\n' \
-                    "${script_name}" \
-                    >&2
-                exit 1
-            fi
-        else
-            local \
-                last_stable_tag \
-                last_stable_version \
-                last_stable_version_on_the_snap_store
-
-            last_stable_tag="$(
-                echo -n "${stable_tags[@]}" \
-                    | tr ' ' "\\n" \
-                    | sort --version-sort \
-                    | tail --lines=1
-
-            )"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last stable release tag determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_stable_tag}" \
-                    1>&2
-            fi
-
-            last_stable_version="${map_of_tag_to_normalized_version["${last_stable_tag}"]}"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last stable version determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_stable_version}" \
-                    1>&2
-            fi
-
-            last_stable_version_on_the_snap_store="$(
-                snap_query_version \
-                    "${script_name}" \
-                    "${SNAPCRAFT_PROJECT_NAME}" \
-                    stable \
-                    "${snap_version_postfix_seperator}"
-            )"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last stable version on the snap store determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_stable_version_on_the_snap_store}" \
-                    1>&2
-            fi
-
-            if [ "${last_stable_version}" != "${last_stable_version_on_the_snap_store}" ]; then
-                if test "${flag_debug}" == true; then
-                    printf -- \
-                        "%s: DEBUG: Last stable version in repo(%s) doesn't match version in stable channel(%s), marking as mismatch.\\n" \
-                        "${script_name}" \
-                        "${last_stable_version}" \
-                        "${last_stable_version_on_the_snap_store}" \
-                        1>&2
-                fi
-                flag_version_mismatch_stable=true
-            fi
-        fi
-        unset \
-            stable_tag_pattern_grep_opts \
-            tag_pattern_stable
+        determine_stable_release_details \
+            "${script_name}" \
+            tag_pattern_stable \
+            "${tag_pattern_release_candidate}" \
+            "${tag_pattern_beta}" \
+            last_stable_tag \
+            last_stable_version \
+            last_stable_version_on_the_snap_store \
+            flag_version_mismatch_stable_ref \
+            "${flag_force_stable}" \
+            "${flag_debug}" \
+            "${all_release_tags[@]}"
 
         printf -- \
             '%s: INFO: Detecting release candidate releases...\n' \
@@ -929,6 +859,111 @@ normalize_version(){
     # shellcheck disable=SC2001
     sed "s#^${tag_prefix_release}##" \
         | tr _ .
+}
+
+determine_stable_release_details(){
+    local script_name="${1}"; shift
+    # Indirection
+    # shellcheck disable=SC2034
+    local -n tag_pattern_stable_ref="${1}"; shift
+    local tag_pattern_release_candidate="${1}"; shift
+    local tag_pattern_beta="${1}"; shift
+    local -n last_stable_tag_ref="${1}"; shift
+    local -n last_stable_version_ref="${1}"; shift
+    local -n last_stable_version_on_the_snap_store_ref="${1}"; shift
+    local -n flag_version_mismatch_stable_ref="${1}"; shift
+    local flag_force_stable="${1}"; shift
+    local flag_debug="${1}"; shift
+    local -a all_release_tags=("${@}"); set --
+
+    local stable_tag_pattern_grep_opts
+    if test -v tag_pattern_stable_ref; then
+        stable_tag_pattern_grep_opts=
+    else
+        stable_tag_pattern_grep_opts=--invert-match
+        tag_pattern_stable_ref="${tag_pattern_beta}|${tag_pattern_release_candidate}"
+    fi
+
+    local -a stable_tags=()
+    mapfile \
+        -t stable_tags \
+        < <(
+        echo -n "${all_release_tags[@]}" \
+            | tr ' ' "\\n" \
+            | grep \
+                --extended-regexp \
+                ${stable_tag_pattern_grep_opts} \
+                --regexp="(${tag_pattern_stable_ref})"
+    )
+
+    if test "${#stable_tags[@]}" -eq 0; then
+        if test "${flag_force_stable}" = true; then
+            printf -- \
+                '%s: %s: Error: --force-stable specified, but no stable release tags are found.\n' \
+                "${FUNCNAME[0]}" \
+                "${script_name}" \
+                >&2
+            exit 1
+        fi
+    else
+        last_stable_tag_ref="$(
+            echo -n "${stable_tags[@]}" \
+                | tr ' ' "\\n" \
+                | sort --version-sort \
+                | tail --lines=1
+
+        )"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: %s: DEBUG: Last stable release tag determines to be "%s".\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_stable_tag_ref}" \
+                1>&2
+        fi
+
+        last_stable_version_ref="${map_of_tag_to_normalized_version["${last_stable_tag}"]}"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: %s: DEBUG: Last stable version determines to be "%s".\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_stable_version_ref}" \
+                1>&2
+        fi
+
+        last_stable_version_on_the_snap_store_ref="$(
+            snap_query_version \
+                "${script_name}" \
+                "${SNAPCRAFT_PROJECT_NAME}" \
+                stable \
+                "${snap_version_postfix_seperator}"
+        )"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: %s: DEBUG: Last stable version on the snap store determines to be "%s".\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_stable_version_on_the_snap_store_ref}" \
+                1>&2
+        fi
+
+        if [ "${last_stable_version_ref}" != "${last_stable_version_on_the_snap_store_ref}" ]; then
+            if test "${flag_debug}" == true; then
+                printf -- \
+                    "%s: %s: DEBUG: Last stable version in repo(%s) doesn't match version in stable channel(%s), marking as mismatch.\\n" \
+                    "${script_name}" \
+                    "${FUNCNAME[0]}" \
+                    "${last_stable_version_ref}" \
+                    "${last_stable_version_on_the_snap_store_ref}" \
+                    1>&2
+            fi
+            flag_version_mismatch_stable_ref=true
+        fi
+    fi
+    unset \
+        stable_tag_pattern_grep_opts \
+        tag_pattern_stable
 }
 
 # Query snap version for specific channel, we use the Snap Store API
