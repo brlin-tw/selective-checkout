@@ -194,7 +194,8 @@ init(){
             last_stable_tag \
             last_stable_version \
             last_stable_version_on_the_snap_store \
-            flag_version_mismatch_stable_ref \
+            flag_version_mismatch_stable \
+            "${snap_version_postfix_seperator}" \
             "${flag_force_stable}" \
             "${flag_debug}" \
             "${all_release_tags[@]}"
@@ -889,6 +890,7 @@ determine_stable_release_details(){
     local -n last_stable_version_ref="${1}"; shift
     local -n last_stable_version_on_the_snap_store_ref="${1}"; shift
     local -n flag_version_mismatch_stable_ref="${1}"; shift
+    local snap_version_postfix_seperator="${1}"; shift
     local flag_force_stable="${1}"; shift
     local flag_debug="${1}"; shift
     local -a all_release_tags=("${@}"); set --
