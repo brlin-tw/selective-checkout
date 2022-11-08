@@ -169,10 +169,24 @@ init(){
 
         local normalized_release_version
         for tag in ${all_release_tags}; do
+            if test "${flag_debug}" == true; then
+                printf -- \
+                    '%s: DEBUG: Found release tag: %s\n' \
+                    "${script_name}" \
+                    "${tag}" \
+                    1>&2
+            fi
             normalized_release_version="$(
                 normalize_version <<< "${tag}"
             )"
 
+            if test "${flag_debug}" == true; then
+                printf -- \
+                    '%s: DEBUG: Normalized release version: %s\n' \
+                    "${script_name}" \
+                    "${normalized_release_version}" \
+                    1>&2
+            fi
             map_of_normalized_version_to_tag[${normalized_release_version}]="${tag}"
         done
         unset \
