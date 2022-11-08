@@ -193,11 +193,11 @@ init(){
             normalized_release_version \
             tag
 
-        local stable_pattern_grep_matching_option
+        local stable_tag_pattern_grep_opts
         if test -v tag_pattern_stable; then
-            stable_pattern_grep_matching_option=
+            stable_tag_pattern_grep_opts=
         else
-            stable_pattern_grep_matching_option=--invert-match
+            stable_tag_pattern_grep_opts=--invert-match
             tag_pattern_stable="${tag_pattern_beta}|${tag_pattern_release_candidate}"
         fi
 
@@ -205,7 +205,7 @@ init(){
             | tr ' ' "\\n" \
             | grep \
                 --extended-regexp \
-                ${stable_pattern_grep_matching_option} \
+                ${stable_tag_pattern_grep_opts} \
                 --quiet \
                 --regexp="(${tag_pattern_stable})"; then
             local \
@@ -218,7 +218,7 @@ init(){
                     | tr ' ' "\\n" \
                     | grep \
                         --extended-regexp \
-                        ${stable_pattern_grep_matching_option} \
+                        ${stable_tag_pattern_grep_opts} \
                         --regexp="(${tag_pattern_stable})" \
                     | sort --version-sort \
                     | tail --lines=1
@@ -246,7 +246,7 @@ init(){
         fi
 
         unset \
-            stable_pattern_grep_matching_option \
+            stable_tag_pattern_grep_opts \
             tag_pattern_stable
 
         if echo -n "${!map_of_normalized_version_to_tag[@]}" \
