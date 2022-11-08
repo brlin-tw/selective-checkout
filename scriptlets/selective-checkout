@@ -51,6 +51,7 @@ init(){
         checkout_mode \
         flag_append_packaging_version=false \
         flag_dry_run=false \
+        flag_debug=false \
         flag_debug_tracing=false \
         flag_force_snapshot=false \
         flag_force_stable=false \
@@ -72,6 +73,7 @@ init(){
         "${script_name}" \
         flag_append_packaging_version \
         tag_pattern_beta \
+        flag_debug \
         flag_debug_tracing \
         flag_dry_run \
         flag_force_snapshot \
@@ -455,6 +457,7 @@ determining_runtime_parameters(){
     local script_name="${1}"; shift
     local -n flag_append_packaging_version_ref="${1}"; shift
     local -n tag_pattern_beta_ref="${1}"; shift
+    local -n flag_debug_ref="${1}"; shift
     local -n flag_debug_tracing_ref="${1}"; shift
     local -n flag_dry_run_ref="${1}"; shift
     local -n flag_force_snapshot_ref="${1}"; shift
@@ -505,8 +508,14 @@ determining_runtime_parameters(){
                         shift 1
                     fi
                 ;;
-                # Enable execution tracing
+                # Enable debug
                 --debug)
+                    # Indirect access
+                    # shellcheck disable=SC2034
+                    flag_debug_ref=true
+                ;;
+                # Enable execution tracing
+                --debug-tracing)
                     # Indirect access
                     # shellcheck disable=SC2034
                     flag_debug_tracing_ref=true
