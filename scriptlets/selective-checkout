@@ -175,31 +175,13 @@ init(){
                 "${tag_pattern_release}"
         )
 
-        local normalized_release_version
-        for tag in "${all_release_tags[@]}"; do
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Found release tag: %s\n' \
-                    "${script_name}" \
-                    "${tag}" \
-                    1>&2
-            fi
-            normalized_release_version="$(
-                normalize_version <<< "${tag}"
-            )"
-
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Normalized release version: %s\n' \
-                    "${script_name}" \
-                    "${normalized_release_version}" \
-                    1>&2
-            fi
-            map_of_tag_to_normalized_version[${tag}]="${normalized_release_version}"
-        done
-        unset \
-            normalized_release_version \
-            tag
+        printf -- \
+            '%s: INFO: Determining normalized release version strings.\n' \
+            "${script_name}"
+        determine_normalized_release_version_string \
+            "${script_name}" \
+            map_of_tag_to_normalized_version \
+            "${all_release_tags[@]}"
 
         printf -- \
             '%s: INFO: Detecting stable releases...\n' \
@@ -860,6 +842,40 @@ normalize_version(){
     # shellcheck disable=SC2001
     sed "s#^${tag_prefix_release}##" \
         | tr _ .
+}
+
+determine_normalized_release_version_string(){
+    local script_name="${1}"; shift
+    local -n map_of_tag_to_normalized_version_ref="${1}"; shift
+    local -a all_release_tags=("${@}"); set --
+
+    local normalized_release_version
+    for tag in "${all_release_tags[@]}"; do
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: %s: DEBUG: Found release tag: %s\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${tag}" \
+                1>&2
+        fi
+        normalized_release_version="$(
+            normalize_version <<< "${tag}"
+        )"
+
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: %s: DEBUG: Normalized release version: %s\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${normalized_release_version}" \
+                1>&2
+        fi
+        map_of_tag_to_normalized_version_ref[${tag}]="${normalized_release_version}"
+    done
+    unset \
+        normalized_release_version \
+        tag
 }
 
 determine_stable_release_details(){
