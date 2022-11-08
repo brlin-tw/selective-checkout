@@ -842,9 +842,10 @@ determining_runtime_parameters(){
                 ;;
                 *)
                     printf -- \
-                        '%s: %s: Error: Invalid command-line argument.\n' \
+                        '%s: %s: Error: Invalid command-line argument "%s".\n' \
                         "${script_name}" \
                         "${FUNCNAME[0]}" \
+                        "${1}" \
                         >&2
                     exit 1
                 ;;
