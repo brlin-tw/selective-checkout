@@ -140,6 +140,9 @@ init(){
             last_stable_tag \
             last_stable_version \
             last_stable_version_on_the_snap_store \
+            last_release_candidate_tag \
+            last_release_candidate_version \
+            last_release_candidate_version_on_the_snap_store \
             last_beta_tag \
             last_beta_version \
             last_beta_version_on_the_snap_store \
@@ -203,170 +206,30 @@ init(){
         printf -- \
             '%s: INFO: Detecting release candidate releases...\n' \
             "${script_name}"
-        local -a release_candidate_tags
-        mapfile \
-            -t release_candidate_tags \
-            < <(
-            echo -n "${all_release_tags[@]}" \
-                | tr ' ' "\\n" \
-                | grep \
-                    --extended-regexp \
-                    --regexp="${tag_pattern_release_candidate}"
-        )
-
-        if test "${#release_candidate_tags[@]}" -eq 0; then
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: No release candidate release tags found.\n' \
-                    "${script_name}" \
-                    1>&2
-            fi
-        else
-            local \
-                last_release_candidate_tag \
-                last_release_candidate_version \
-                last_release_candidate_version_on_the_snap_store
-
-            last_release_candidate_tag="$(
-                echo -n "${release_candidate_tags[@]}" \
-                    | tr ' ' "\\n" \
-                    | grep \
-                        --extended-regexp \
-                        --regexp="${tag_pattern_release_candidate}" \
-                    | sort --version-sort \
-                    | tail --lines=1
-            )"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last release candidate release tag determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_release_candidate_tag}" \
-                    1>&2
-            fi
-
-            last_release_candidate_version="${map_of_tag_to_normalized_version["${last_release_candidate_tag}"]}"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last release candidate version determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_release_candidate_version}" \
-                    1>&2
-            fi
-
-            last_release_candidate_version_on_the_snap_store="$(
-                snap_query_version \
-                    "${script_name}" \
-                    "${SNAPCRAFT_PROJECT_NAME}" \
-                    candidate \
-                    "${snap_version_postfix_seperator}"
-            )"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last release candidate version on the snap store determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_release_candidate_version_on_the_snap_store}" \
-                    1>&2
-            fi
-
-            if test "${last_release_candidate_version_on_the_snap_store}" != "${last_release_candidate_version}"; then
-                if test "${flag_debug}" == true; then
-                    printf -- \
-                        "%s: DEBUG: Last release candidate version(%s) in repo doesn't match version in candidate channel(%s), marking as mismatch.\\n" \
-                        "${script_name}" \
-                        "${last_release_candidate_version_on_the_snap_store}" \
-                        "${last_release_candidate_version}" \
-                        1>&2
-                fi
-                flag_version_mismatch_release_candidate=true
-            fi
-        fi
-        unset \
-            tag_pattern_release_candidate
+        determine_release_candidate_release_details \
+            "${script_name}" \
+            "${tag_pattern_release_candidate}" \
+            last_release_candidate_tag \
+            last_release_candidate_version \
+            last_release_candidate_version_on_the_snap_store \
+            flag_version_mismatch_release_candidate \
+            "${snap_version_postfix_seperator}" \
+            "${flag_debug}" \
+            "${all_release_tags[@]}"
 
         printf -- \
             '%s: INFO: Detecting beta releases...\n' \
             "${script_name}"
-        local -a beta_tags
-        mapfile \
-            -t beta_tags \
-            < <(
-            echo -n "${all_release_tags[@]}" \
-                | tr ' ' "\\n" \
-                | grep \
-                    --extended-regexp \
-                    --regexp="${tag_pattern_beta}"
-        )
-
-        if test "${#beta_tags[@]}" -eq 0; then
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: No beta release tags found.\n' \
-                    "${script_name}" \
-                    1>&2
-            fi
-        else
-            local \
-                last_beta_tag \
-                last_beta_version \
-                last_beta_version_on_the_snap_store
-
-            last_beta_tag="$(
-                echo -n "${beta_tags[@]}" \
-                    | tr ' ' "\\n" \
-                    | grep \
-                        --extended-regexp \
-                        --regexp="${tag_pattern_beta}" \
-                    | sort --version-sort \
-                    | tail --lines=1
-            )"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last beta release tag determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_beta_tag}" \
-                    1>&2
-            fi
-
-            last_beta_version="${map_of_tag_to_normalized_version["${last_beta_tag}"]}"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last beta version determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_beta_version}" \
-                    1>&2
-            fi
-
-            last_beta_version_on_the_snap_store="$(
-                snap_query_version \
-                    "${script_name}" \
-                    "${SNAPCRAFT_PROJECT_NAME}" \
-                    beta \
-                    "${snap_version_postfix_seperator}"
-            )"
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    '%s: DEBUG: Last beta version on the snap store determines to be "%s".\n' \
-                    "${script_name}" \
-                    "${last_beta_version_on_the_snap_store}" \
-                    1>&2
-            fi
-
-            if test "${last_beta_version_on_the_snap_store}" != "${last_beta_version}"; then
-                if test "${flag_debug}" == true; then
-                    printf -- \
-                        "%s: DEBUG: Last beta version(%s) in repo doesn't match version in beta channel(%s), marking as mismatch.\\n" \
-                        "${script_name}" \
-                        "${last_beta_version}" \
-                        "${last_beta_version_on_the_snap_store}" \
-                        1>&2
-                fi
-                flag_version_mismatch_beta=true
-            fi
-        fi
-        unset \
-            map_of_tag_to_normalized_version \
-            snap_version_postfix_seperator \
-            tag_pattern_beta
+        determine_beta_release_details \
+            "${script_name}" \
+            "${tag_pattern_beta}" \
+            last_beta_tag \
+            last_beta_version \
+            last_beta_version_on_the_snap_store \
+            flag_version_mismatch_beta \
+            "${snap_version_postfix_seperator}" \
+            "${flag_debug}" \
+            "${all_release_tags[@]}"
 
         if test "${flag_version_mismatch_stable}" = true \
              || test "${flag_force_stable}" = true; then
@@ -983,6 +846,182 @@ determine_stable_release_details(){
     unset \
         stable_tag_pattern_grep_opts \
         tag_pattern_stable
+}
+
+determine_release_candidate_release_details(){
+    local script_name="${1}"; shift
+    local tag_pattern_release_candidate="${1}"; shift
+    local -n last_release_candidate_tag_ref="${1}"; shift
+    local -n last_release_candidate_version_ref="${1}"; shift
+    local -n last_release_candidate_version_on_the_snap_store_ref="${1}"; shift
+    local -n flag_version_mismatch_release_candidate_ref="${1}"; shift
+    local snap_version_postfix_seperator="${1}"; shift
+    local flag_debug="${1}"; shift
+    local -a all_release_tags=("${@}"); set --
+
+    local -a release_candidate_tags
+    mapfile \
+        -t release_candidate_tags \
+        < <(
+        echo -n "${all_release_tags[@]}" \
+            | tr ' ' "\\n" \
+            | grep \
+                --extended-regexp \
+                --regexp="${tag_pattern_release_candidate}"
+    )
+
+    if test "${#release_candidate_tags[@]}" -eq 0; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: No release candidate release tags found.\n' \
+                "${script_name}" \
+                1>&2
+        fi
+    else
+        last_release_candidate_tag_ref="$(
+            echo -n "${release_candidate_tags[@]}" \
+                | tr ' ' "\\n" \
+                | grep \
+                    --extended-regexp \
+                    --regexp="${tag_pattern_release_candidate}" \
+                | sort --version-sort \
+                | tail --lines=1
+        )"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: Last release candidate release tag determines to be "%s".\n' \
+                "${script_name}" \
+                "${last_release_candidate_tag_ref}" \
+                1>&2
+        fi
+
+        last_release_candidate_version_ref="${map_of_tag_to_normalized_version["${last_release_candidate_tag_ref}"]}"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: Last release candidate version determines to be "%s".\n' \
+                "${script_name}" \
+                "${last_release_candidate_version_ref}" \
+                1>&2
+        fi
+
+        last_release_candidate_version_on_the_snap_store_ref="$(
+            snap_query_version \
+                "${script_name}" \
+                "${SNAPCRAFT_PROJECT_NAME}" \
+                candidate \
+                "${snap_version_postfix_seperator}"
+        )"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: Last release candidate version on the snap store determines to be "%s".\n' \
+                "${script_name}" \
+                "${last_release_candidate_version_on_the_snap_store_ref}" \
+                1>&2
+        fi
+
+        if test "${last_release_candidate_version_on_the_snap_store_ref}" != "${last_release_candidate_version_ref}"; then
+            if test "${flag_debug}" == true; then
+                printf -- \
+                    "%s: DEBUG: Last release candidate version(%s) in repo doesn't match version in candidate channel(%s), marking as mismatch.\\n" \
+                    "${script_name}" \
+                    "${last_release_candidate_version_on_the_snap_store_ref}" \
+                    "${last_release_candidate_version_ref}" \
+                    1>&2
+            fi
+            flag_version_mismatch_release_candidate_ref=true
+        fi
+    fi
+    unset \
+        tag_pattern_release_candidate
+}
+
+determine_beta_release_details(){
+    local script_name="${1}"; shift
+    local tag_pattern_beta="${1}"; shift
+    local -n last_beta_tag_ref="${1}"; shift
+    local -n last_beta_version_ref="${1}"; shift
+    local -n last_beta_version_on_the_snap_store_ref="${1}"; shift
+    local -n flag_version_mismatch_beta_ref="${1}"; shift
+    local snap_version_postfix_seperator="${1}"; shift
+    local flag_debug="${1}"; shift
+    local all_release_tags=("${@}"); set --
+
+    local -a beta_tags
+    mapfile \
+        -t beta_tags \
+        < <(
+        echo -n "${all_release_tags[@]}" \
+            | tr ' ' "\\n" \
+            | grep \
+                --extended-regexp \
+                --regexp="${tag_pattern_beta}"
+    )
+
+    if test "${#beta_tags[@]}" -eq 0; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: No beta release tags found.\n' \
+                "${script_name}" \
+                1>&2
+        fi
+    else
+        last_beta_tag_ref="$(
+            echo -n "${beta_tags[@]}" \
+                | tr ' ' "\\n" \
+                | grep \
+                    --extended-regexp \
+                    --regexp="${tag_pattern_beta}" \
+                | sort --version-sort \
+                | tail --lines=1
+        )"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: Last beta release tag determines to be "%s".\n' \
+                "${script_name}" \
+                "${last_beta_tag_ref}" \
+                1>&2
+        fi
+
+        last_beta_version_ref="${map_of_tag_to_normalized_version["${last_beta_tag_ref}"]}"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: Last beta version determines to be "%s".\n' \
+                "${script_name}" \
+                "${last_beta_version_ref}" \
+                1>&2
+        fi
+
+        last_beta_version_on_the_snap_store="$(
+            snap_query_version \
+                "${script_name}" \
+                "${SNAPCRAFT_PROJECT_NAME}" \
+                beta \
+                "${snap_version_postfix_seperator}"
+        )"
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: DEBUG: Last beta version on the snap store determines to be "%s".\n' \
+                "${script_name}" \
+                "${last_beta_version_on_the_snap_store_ref}" \
+                1>&2
+        fi
+
+        if test "${last_beta_version_on_the_snap_store_ref}" != "${last_beta_version_ref}"; then
+            if test "${flag_debug}" == true; then
+                printf -- \
+                    "%s: DEBUG: Last beta version(%s) in repo doesn't match version in beta channel(%s), marking as mismatch.\\n" \
+                    "${script_name}" \
+                    "${last_beta_version_ref}" \
+                    "${last_beta_version_on_the_snap_store_ref}" \
+                    1>&2
+            fi
+            flag_version_mismatch_beta_ref=true
+        fi
+    fi
+    unset \
+        map_of_tag_to_normalized_version \
+        snap_version_postfix_seperator \
+        tag_pattern_beta
 }
 
 # Query snap version for specific channel, we use the Snap Store API
