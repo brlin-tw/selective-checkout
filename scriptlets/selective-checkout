@@ -164,7 +164,7 @@ init(){
 
         if ! test -v SNAPCRAFT_PROJECT_NAME; then
             printf -- \
-                "%S: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
+                "%s: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
                 "${script_name}" \
                 >&2
             exit 1
