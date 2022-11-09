@@ -449,7 +449,7 @@ determining_runtime_parameters(){
                 # Force building development snapshot regardless the status of the snap
                 --force-snapshot)
                     # Indirect access
-                    # shellcheck dsable=SC2034
+                    # shellcheck disable=SC2034
                     flag_force_snapshot_ref=true
                 ;;
                 --force-stable)
