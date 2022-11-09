@@ -273,6 +273,7 @@ init(){
             flag_version_mismatch_stable \
             flag_version_mismatch_beta \
             flag_version_mismatch_release_candidate \
+            flag_force_stable \
             last_stable_tag \
             last_stable_version \
             last_stable_version_on_the_snap_store \
