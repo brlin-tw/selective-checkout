@@ -284,7 +284,6 @@ init(){
             last_beta_version \
             last_beta_version_on_the_snap_store
 
-
         if test "${release_type_to_build}" != development-snapshot; then
             printf -- \
                 "%s: Info: The last tagged %s release(%s) hasn't been promoted to the %s channel(%s) on the Snap Store yet, checking out %s.\\n" \
