@@ -819,7 +819,8 @@ determine_stable_release_details(){
                 "${script_name}" \
                 "${SNAPCRAFT_PROJECT_NAME}" \
                 stable \
-                "${snap_version_postfix_seperator}"
+                "${snap_version_postfix_seperator}" \
+                "${flag_debug}"
         )"
         if test "${flag_debug}" == true; then
             printf -- \
@@ -909,7 +910,8 @@ determine_release_candidate_release_details(){
                 "${script_name}" \
                 "${SNAPCRAFT_PROJECT_NAME}" \
                 candidate \
-                "${snap_version_postfix_seperator}"
+                "${snap_version_postfix_seperator}" \
+                "${flag_debug}"
         )"
         if test "${flag_debug}" == true; then
             printf -- \
@@ -996,7 +998,8 @@ determine_beta_release_details(){
                 "${script_name}" \
                 "${SNAPCRAFT_PROJECT_NAME}" \
                 beta \
-                "${snap_version_postfix_seperator}"
+                "${snap_version_postfix_seperator}" \
+                "${flag_debug}"
         )"
         if test "${flag_debug}" == true; then
             printf -- \
@@ -1025,9 +1028,11 @@ determine_beta_release_details(){
 }
 
 # Query snap version for specific channel, we use the Snap Store API
+# Output: snap version string, or null string if the channel has no
+# snap
 # http://api.snapcraft.io/docs/info.html#snap_info
 snap_query_version(){
-    if test $# -ne 4; then
+    if test $# -ne 5; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
         exit 1
     fi
@@ -1037,64 +1042,69 @@ snap_query_version(){
     local snap_identifier="${1}"; shift
     local release_channel="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
+    local flag_debug="${1}"; shift
 
     snap_arch="${SNAP_ARCH:-amd64}"
 
-    local snap_revision_in_release_channel
-    snap_revision_in_release_channel="$(
+    local snap_version_in_release_channel
+    local info_store_api_call_response
+
+    if test "${flag_debug}" == true; then
+        printf -- \
+            '%s: %s: DEBUG: Checking what snap revisions are available for the %s snap at the %s release channel...\n' \
+            "${script_name}" \
+            "${FUNCNAME[0]}" \
+            "${snap_identifier}" \
+            "${release_channel}" \
+            1>&2
+    fi
+    if ! info_store_api_call_response="$(
         curl \
             --fail \
             --silent \
             --show-error \
             --header 'Snap-Device-Series: 16' \
-            https://api.snapcraft.io/v2/snaps/info/"${snap_identifier}" \
-            | jq \
-                ".\"channel-map\"[]
-                 | select(
-                        .channel.name == \"${release_channel}\"
-                        and .channel.architecture == \"${snap_arch}\"
-                ).revision" \
-            | sort \
-                --reverse \
-            | head \
-                --lines=1
-    )"
-    if test "${?}" != 0; then
-        printf -- \
-            '%s: %s: Error: Unable to query the snap revision in the %s channel from the Snap Store.\n' \
+            "https://api.snapcraft.io/v2/snaps/info/${snap_identifier}?fields=version&architecture=${snap_arch}" \
+            2>&1
+        )"; then
+        printf \
+            '%s: %s: Error: Unable to call the Snap Store info API to retrieve snap revision info: %s\n' \
             "${script_name}" \
             "${FUNCNAME[0]}" \
-            "${release_channel}" \
+            "${info_store_api_call_response}" \
             1>&2
         return 1
     fi
 
-    local snap_version_in_release_channel
-    snap_version_in_release_channel="$(
-        curl \
-            --fail \
-            --silent \
-            --show-error \
-            --header 'Snap-Device-Series: 16' \
-            https://api.snapcraft.io/v2/snaps/info/"${snap_identifier}" \
-            | jq \
-                --raw-output \
-                ".\"channel-map\"[]
-                | select(
-                    .channel.name == \"${release_channel}\"
-                        and .revision == ${snap_revision_in_release_channel}
-                ).version" \
-            | cut \
-                --delimiter="${snap_version_postfix_seperator}" \
-                --fields=1
-    )"
-    if test "${?}" != 0; then
-        printf -- \
-            '%s: Error: Unable to query the snap version of the %s revision from the Snap Store.\n' \
+    if ! snap_version_in_release_channel="$(
+        jq \
+            --raw-output \
+            ".\"channel-map\"[]
+            | select(
+                .channel.name == \"${release_channel}\"
+            ).version" \
+            <<< "${info_store_api_call_response}" \
+            2>&1
+        )"; then
+        printf \
+            '%s: %s: Error: Unable to query the snap version from the store info API response: %s\n' \
+            "${script_name}" \
             "${FUNCNAME[0]}" \
-            "${snap_revision_in_release_channel}" \
+            "${snap_version_in_release_channel}" \
             1>&2
         return 2
+    fi
+    if test -z "${snap_version_in_release_channel}"; then
+        # No snaps available in the channel
+        return 0
+    fi
+    if test "${flag_debug}" == true; then
+        printf \
+            '%s: %s: DEBUG: Snap version determined to be: "%s".\n' \
+            "${script_name}" \
+            "${FUNCNAME[0]}" \
+            "${snap_version_in_release_channel}" \
+            1>&2
     fi
 
     printf %s "${snap_version_in_release_channel}"
