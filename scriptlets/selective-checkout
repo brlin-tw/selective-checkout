@@ -1058,6 +1058,7 @@ determine_which_version_to_build(){
     # Case: Build the stable version when:
     #
     # * The stable version is available
+    # * AND there is snap on the stable channel of the Snap Store
     # * AND the stable version is newer than the one on the stable
     #   channel of the snap store
     elif test -n "${last_stable_version}" \
