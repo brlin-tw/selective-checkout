@@ -739,6 +739,8 @@ determine_normalized_release_version_string(){
                 "${normalized_release_version}" \
                 1>&2
         fi
+        # Indirection
+        # shellcheck disable=SC2034
         map_of_tag_to_normalized_version_ref[${tag}]="${normalized_release_version}"
     done
     unset \
