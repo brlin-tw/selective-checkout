@@ -134,9 +134,6 @@ init(){
             "${script_name}"
         local \
             release_type_to_build=development-snapshot \
-            flag_version_mismatch_stable=false \
-            flag_version_mismatch_beta=false \
-            flag_version_mismatch_release_candidate=false \
             last_stable_tag \
             last_stable_version \
             last_stable_version_on_the_snap_store \
@@ -145,10 +142,7 @@ init(){
             last_release_candidate_version_on_the_snap_store \
             last_beta_tag \
             last_beta_version \
-            last_beta_version_on_the_snap_store \
-            selected_release_tag \
-            selected_release_version \
-            selected_snap_channel_version
+            last_beta_version_on_the_snap_store
 
         local -a all_release_tags=()
         local -A \
@@ -197,7 +191,6 @@ init(){
             last_stable_tag \
             last_stable_version \
             last_stable_version_on_the_snap_store \
-            flag_version_mismatch_stable \
             "${snap_version_postfix_seperator}" \
             "${flag_force_stable}" \
             "${flag_debug}" \
@@ -212,7 +205,6 @@ init(){
             last_release_candidate_tag \
             last_release_candidate_version \
             last_release_candidate_version_on_the_snap_store \
-            flag_version_mismatch_release_candidate \
             "${snap_version_postfix_seperator}" \
             "${flag_debug}" \
             "${all_release_tags[@]}"
@@ -226,48 +218,60 @@ init(){
             last_beta_tag \
             last_beta_version \
             last_beta_version_on_the_snap_store \
-            flag_version_mismatch_beta \
             "${snap_version_postfix_seperator}" \
             "${flag_debug}" \
             "${all_release_tags[@]}"
 
-        if test "${flag_version_mismatch_stable}" = true \
-             || test "${flag_force_stable}" = true; then
-            release_type_to_build=stable
-            selected_release_tag="${last_stable_tag}"
-            selected_release_version="${last_stable_version}"
-            selected_snap_channel_version="${last_stable_version_on_the_snap_store}"
-        elif test "${flag_version_mismatch_release_candidate}" = true \
-            && (
-                test -v last_stable_version \
-                    && version_former_is_greater_than_latter \
-                        "${last_release_candidate_version}" \
-                        "${last_stable_version}"
-            ); then
-            release_type_to_build=release-candidate
-            selected_release_tag="${last_release_candidate_tag}"
-            selected_release_version="${last_release_candidate_version}"
-            selected_snap_channel_version="${last_release_candidate_version_on_the_snap_store}"
-        elif test "${flag_version_mismatch_beta}" = true \
-            && (
-                test -v last_release_candidate_version \
-                    && version_former_is_greater_than_latter \
-                        "${last_beta_version}" \
-                        "${last_release_candidate_version}"
-            ) \
-            && (
-                test -v last_stable_version \
-                    && version_former_is_greater_than_latter \
-                        "${last_release_candidate_version}" \
-                        "${last_stable_version}"
-            ); then
-            release_type_to_build=beta
-            selected_release_tag="${last_beta_tag}"
-            selected_release_version="${last_beta_version}"
-            selected_snap_channel_version="${last_beta_version_on_the_snap_store}"
-        else
-            release_type_to_build=development-snapshot
-        fi
+        local \
+            selected_release_tag \
+            selected_release_version \
+            selected_snap_channel_version
+        release_type_to_build="$(
+            determine_which_version_to_build \
+                "${script_name}" \
+                "${last_stable_tag}" \
+                "${last_stable_version}" \
+                "${last_stable_version_on_the_snap_store}" \
+                "${last_release_candidate_tag}" \
+                "${last_release_candidate_version}" \
+                "${last_release_candidate_version_on_the_snap_store}" \
+                "${last_beta_tag}" \
+                "${last_beta_version}" \
+                "${last_beta_version_on_the_snap_store}" \
+                "${flag_force_stable}" \
+                "${flag_force_snapshot}"
+        )"
+
+
+        case "${release_type_to_build}" in
+            stable)
+                selected_release_tag="${last_stable_tag}"
+                selected_release_version="${last_stable_version}"
+                selected_snap_channel_version="${last_stable_version_on_the_snap_store}"
+            ;;
+            release-candidate)
+                selected_release_tag="${last_release_candidate_tag}"
+                selected_release_version="${last_release_candidate_version}"
+                selected_snap_channel_version="${last_release_candidate_version_on_the_snap_store}"
+            ;;
+            beta)
+                selected_release_tag="${last_beta_tag}"
+                selected_release_version="${last_beta_version}"
+                selected_snap_channel_version="${last_beta_version_on_the_snap_store}"
+            ;;
+            development-snapshot)
+                : # Nothing to do here
+            ;;
+            *)
+                printf -- \
+                    '%s: %s: FATAL: Invalid release_type_to_build(%s), report bug.\n' \
+                    "${script_name}" \
+                    "${FUNCNAME[0]}" \
+                    "${release_type_to_build}" \
+                    1>&2
+                exit 1
+            ;;
+        esac
 
         unset \
             flag_version_mismatch_stable \
@@ -752,7 +756,6 @@ determine_stable_release_details(){
     local -n last_stable_tag_ref="${1}"; shift
     local -n last_stable_version_ref="${1}"; shift
     local -n last_stable_version_on_the_snap_store_ref="${1}"; shift
-    local -n flag_version_mismatch_stable_ref="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
     local flag_force_stable="${1}"; shift
     local flag_debug="${1}"; shift
@@ -779,14 +782,11 @@ determine_stable_release_details(){
     )
 
     if test "${#stable_tags[@]}" -eq 0; then
-        if test "${flag_force_stable}" = true; then
-            printf -- \
-                '%s: %s: Error: --force-stable specified, but no stable release tags are found.\n' \
-                "${FUNCNAME[0]}" \
-                "${script_name}" \
-                >&2
-            exit 1
-        fi
+        last_stable_tag_ref=
+        last_stable_version_ref=
+
+        # NOTE: The store CAN have releases, though...
+        last_stable_version_on_the_snap_store_ref=
     else
         last_stable_tag_ref="$(
             echo -n "${stable_tags[@]}" \
@@ -830,19 +830,6 @@ determine_stable_release_details(){
                 "${last_stable_version_on_the_snap_store_ref}" \
                 1>&2
         fi
-
-        if [ "${last_stable_version_ref}" != "${last_stable_version_on_the_snap_store_ref}" ]; then
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    "%s: %s: DEBUG: Last stable version in repo(%s) doesn't match version in stable channel(%s), marking as mismatch.\\n" \
-                    "${script_name}" \
-                    "${FUNCNAME[0]}" \
-                    "${last_stable_version_ref}" \
-                    "${last_stable_version_on_the_snap_store_ref}" \
-                    1>&2
-            fi
-            flag_version_mismatch_stable_ref=true
-        fi
     fi
     unset \
         stable_tag_pattern_grep_opts \
@@ -855,7 +842,6 @@ determine_release_candidate_release_details(){
     local -n last_release_candidate_tag_ref="${1}"; shift
     local -n last_release_candidate_version_ref="${1}"; shift
     local -n last_release_candidate_version_on_the_snap_store_ref="${1}"; shift
-    local -n flag_version_mismatch_release_candidate_ref="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
     local flag_debug="${1}"; shift
     local -a all_release_tags=("${@}"); set --
@@ -878,6 +864,9 @@ determine_release_candidate_release_details(){
                 "${script_name}" \
                 1>&2
         fi
+        last_release_candidate_tag_ref=
+        last_release_candidate_version_ref=
+        last_release_candidate_version_on_the_snap_store_ref=
     else
         last_release_candidate_tag_ref="$(
             echo -n "${release_candidate_tags[@]}" \
@@ -920,18 +909,6 @@ determine_release_candidate_release_details(){
                 "${last_release_candidate_version_on_the_snap_store_ref}" \
                 1>&2
         fi
-
-        if test "${last_release_candidate_version_on_the_snap_store_ref}" != "${last_release_candidate_version_ref}"; then
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    "%s: DEBUG: Last release candidate version(%s) in repo doesn't match version in candidate channel(%s), marking as mismatch.\\n" \
-                    "${script_name}" \
-                    "${last_release_candidate_version_on_the_snap_store_ref}" \
-                    "${last_release_candidate_version_ref}" \
-                    1>&2
-            fi
-            flag_version_mismatch_release_candidate_ref=true
-        fi
     fi
     unset \
         tag_pattern_release_candidate
@@ -943,7 +920,6 @@ determine_beta_release_details(){
     local -n last_beta_tag_ref="${1}"; shift
     local -n last_beta_version_ref="${1}"; shift
     local -n last_beta_version_on_the_snap_store_ref="${1}"; shift
-    local -n flag_version_mismatch_beta_ref="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
     local flag_debug="${1}"; shift
     local all_release_tags=("${@}"); set --
@@ -966,6 +942,9 @@ determine_beta_release_details(){
                 "${script_name}" \
                 1>&2
         fi
+        last_beta_tag_ref=
+        last_beta_version_ref=
+        last_beta_version_on_the_snap_store=
     else
         last_beta_tag_ref="$(
             echo -n "${beta_tags[@]}" \
@@ -1008,23 +987,303 @@ determine_beta_release_details(){
                 "${last_beta_version_on_the_snap_store_ref}" \
                 1>&2
         fi
-
-        if test "${last_beta_version_on_the_snap_store_ref}" != "${last_beta_version_ref}"; then
-            if test "${flag_debug}" == true; then
-                printf -- \
-                    "%s: DEBUG: Last beta version(%s) in repo doesn't match version in beta channel(%s), marking as mismatch.\\n" \
-                    "${script_name}" \
-                    "${last_beta_version_ref}" \
-                    "${last_beta_version_on_the_snap_store_ref}" \
-                    1>&2
-            fi
-            flag_version_mismatch_beta_ref=true
-        fi
     fi
     unset \
         map_of_tag_to_normalized_version \
         snap_version_postfix_seperator \
         tag_pattern_beta
+}
+
+determine_which_version_to_build(){
+    local script_name="${1}"; shift
+    local last_stable_tag="${1}"; shift
+    local last_stable_version="${1}"; shift
+    local last_stable_version_on_the_snap_store="${1}"; shift
+    local last_release_candidate_tag="${1}"; shift
+    local last_release_candidate_version="${1}"; shift
+    local last_release_candidate_version_on_the_snap_store="${1}"; shift
+    local last_beta_tag="${1}"; shift
+    local last_beta_version="${1}"; shift
+    local last_beta_version_on_the_snap_store="${1}"; shift
+    local flag_force_stable="${1}"; shift
+    local flag_force_snapshot="${1}"; shift
+
+    local release_type_to_build=undetermined
+
+    # Case: --force-snapshot is specified
+    if test "${flag_force_snapshot}" == true; then
+        printf -- \
+            '%s: %s: DEBUG: The --force-snapshot command option is specified, stable release will be built.\n' \
+            "${script_name}" \
+            "${FUNCNAME[0]}" \
+            1>&2
+        release_type_to_build=development-snapshot
+    # Case: Build the stable version when:
+    #
+    # * --force-stable command-line option is specified
+    # * AND there is stable release version to build on
+    elif test "${flag_force_stable}" == true; then
+        if test -z "${last_stable_version}"; then
+            printf -- \
+                '%s: %s: Error: The --force-stable command-line option is specified, but no stable versions are found.\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                1>&2
+            return 1
+        fi
+
+        printf -- \
+            '%s: %s: DEBUG: The --force-stable command-line option is specified, stable release will be built.\n' \
+            "${script_name}" \
+            "${FUNCNAME[0]}" \
+            1>&2
+        release_type_to_build=stable
+    # Case: Build the stable version when:
+    #
+    # * The stable version is available
+    # * AND there's no snap available in the stable channel of the Snap
+    #   Store
+    elif test -n "${last_stable_version}" \
+        && test -z "${last_stable_version_on_the_snap_store}"; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: %s: DEBUG: Stable version not available on the Snap Store, stable release will be built.\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                1>&2
+        fi
+        release_type_to_build=stable
+    # Case: Build the stable version when:
+    #
+    # * The stable version is available
+    # * AND the stable version is newer than the one on the stable
+    #   channel of the snap store
+    elif test -n "${last_stable_version}" \
+        && test -n "${last_stable_version_on_the_snap_store}" \
+        && version_former_is_greater_than_latter \
+            "${last_stable_version}" \
+            "${last_stable_version_on_the_snap_store}"; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                '%s: %s: DEBUG: Stable version(%s) is newer than the one on the Snap Store(%s), stable release will be built.\n' \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_stable_version}" \
+                "${last_stable_version_on_the_snap_store}" \
+                1>&2
+        fi
+        release_type_to_build=stable
+    # Case: Build release candidate version when:
+    #
+    # * Release candidate version is available
+    # * AND there's NO snap on the Snap Store's stable channel
+    # * AND There's NO snap on the Snap Store's candidate channel
+    elif test -n "${last_release_candidate_tag}" \
+        && test -z "${last_release_candidate_version_on_the_snap_store}" \
+        && test -z "${last_stable_version_on_the_snap_store}"; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                "%s: %s: DEBUG: Release candidate version(%s) is not the Snap Store's candidate channel, release candidate version will be built.\\n" \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_release_candidate_version}" \
+                1>&2
+        fi
+        release_type_to_build=release-candidate
+    # Case: Build release candidate version when:
+    #
+    # * Release candidate version is available
+    # * AND the latest stable version is available on the Snap Store
+    # * AND the release candidate version is newer than the version on
+    #   the Snap Store's stable channel
+    # * AND {
+    #       + There's no release in the Snap Store's candidate channel
+    #   } OR {
+    #       + There's release in the Snap Store's candidate channel
+    #       + AND the release candidate version is newer than the
+    #         version in the Snap Store's candidate channel
+    #   }
+    elif test -n "${last_release_candidate_version}" \
+        && test -n "${last_stable_version_on_the_snap_store}" \
+        && version_former_is_greater_than_latter \
+            "${last_release_candidate_version}" \
+            "${last_stable_version_on_the_snap_store}" \
+        && (
+            test -z "${last_release_candidate_version_on_the_snap_store}" \
+                || (
+                    test -n "${last_release_candidate_version_on_the_snap_store}" \
+                        && version_former_is_greater_than_latter \
+                            "${last_release_candidate_version}" \
+                            "${last_release_candidate_version_on_the_snap_store}"
+                )
+        ); then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                "%s: %s: DEBUG: Release candidate version(%s) is not on the Snap Store's candidate channel and is newer than the version on the stable channel(%s), release candidate version will be built.\\n" \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_release_candidate_version}" \
+                "${last_stable_version_on_the_snap_store}" \
+                1>&2
+        fi
+        release_type_to_build=release-candidate
+    # Case: Build release candidate version when:
+    #
+    # * The release candidate version is available
+    # * AND there's snap on the Snap Store's candidate channel
+    # * AND there's snap on the Snap Store's stable channel
+    # * AND the release candidate version is newer than the version on
+    #   the Snap Store's candidate channel
+    # * AND the release candidate version is newer than the stable
+    #   version on the Snap Store
+    elif test -n "${last_release_candidate_version}" \
+        && test -n "${last_release_candidate_version_on_the_snap_store}" \
+        && test -n "${last_stable_version_on_the_snap_store}" \
+        && version_former_is_greater_than_latter \
+            "${last_release_candidate_version}" \
+            "${last_release_candidate_version_on_the_snap_store}" \
+        && version_former_is_greater_than_latter \
+            "${last_release_candidate_version}" \
+            "${last_stable_version_on_the_snap_store}"; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                "%s: %s: DEBUG: Release candidate version(%s) is not the Snap Store's candidate channel and is newer than the version on the stable channel(%s), release candidate version will be built.\\n" \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_release_candidate_version}" \
+                "${last_stable_version_on_the_snap_store}" \
+                1>&2
+        fi
+        release_type_to_build=release-candidate
+    # Case: Build beta version when:
+    #
+    # * The beta version is available
+    # * AND there's no snap on the stable channel of the Snap Store
+    # * AND there's no snap on the candidate channel of the Snap Store
+    # * AND there's no snap on the beta channel of the Snap Store
+    elif test -n "${last_beta_version}" \
+        && test -z "${last_stable_version_on_the_snap_store}" \
+        && test -z "${last_release_candidate_version_on_the_snap_store}" \
+        && test -z "${last_beta_version_on_the_snap_store}"; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                "%s: %s: DEBUG: Beta version(%s) is not in the Snap Store's beta channel, beta version will be built.\\n" \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_beta_version}" \
+                1>&2
+        fi
+        release_type_to_build=beta
+    # Case: Build beta version when:
+    #
+    # * The beta version is available
+    # * AND there's NO snap on the stable channel of the Snap Store
+    # * AND there's NO snap on the candidate channel of the Snap Store
+    # * AND there's snap on the beta channel of the Snap Store
+    # * AND the beta version is newer than the version on the beta
+    #   channel of the Snap Store
+    elif test -n "${last_beta_version}" \
+        && test -z "${last_stable_version_on_the_snap_store}" \
+        && test -z "${last_release_candidate_version_on_the_snap_store}" \
+        && test -n "${last_beta_version_on_the_snap_store}" \
+        && version_former_is_greater_than_latter \
+            "${last_beta_version}" \
+            "${last_beta_version_on_the_snap_store}"; then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                "%s: %s: DEBUG: Beta version(%s) is newer than the one shipped in the Snap Store's beta channel(%s), beta version will be built.\\n" \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_beta_version}" \
+                "${last_beta_version_on_the_snap_store}" \
+                1>&2
+        fi
+        release_type_to_build=beta
+    # Case: Build beta version when
+    #
+    # * The beta version is available
+    # * AND (
+    #      (
+    #       + There's NO snap on the stable channel of the Snap Store
+    #      ) OR (
+    #       + There's snap on the stable channel of the Snap Store
+    #       + AND the beta version is newer than the stable version on
+    #         the Snap Store
+    #      )
+    #   )
+    # * AND (
+    #      (
+    #       + There's NO snap on the candidate channel of the Snap
+    #         Store
+    #      ) OR (
+    #       + There's snap on the candidate channel of the Snap Store
+    #       + AND the beta version is newer than the candidate version
+    #         on the Snap Store
+    #      )
+    #   )
+    # * AND (
+    #       (
+    #        + There's NO snap on the beta channel of the Snap Store
+    #       ) OR (
+    #        + There's snap on the beta channel of the Snap Store
+    #        + AND the beta version is newer than the beta version on
+    #          the Snap Store
+    #       )
+    #   )
+    elif test -n "${last_beta_version}" \
+        && (
+            test -z "${last_stable_version_on_the_snap_store}" \
+                || (
+                    test -n "${last_stable_version_on_the_snap_store}" \
+                        && version_former_is_greater_than_latter \
+                            "${last_beta_version}" \
+                            "${last_stable_version_on_the_snap_store}"
+                )
+        ) && (
+            test -z "${last_release_candidate_version_on_the_snap_store}" \
+                || (
+                    test -n "${last_release_candidate_version_on_the_snap_store}" \
+                        && version_former_is_greater_than_latter \
+                            "${last_beta_version}" \
+                            "${last_release_candidate_version_on_the_snap_store}"
+                )
+        ) && (
+            test -z "${last_beta_version_on_the_snap_store}" \
+            || (
+                test -n "${last_beta_version_on_the_snap_store}" \
+                    && version_former_is_greater_than_latter \
+                        "${last_beta_version}" \
+                        "${last_beta_version_on_the_snap_store}"
+            )
+        ); then
+        if test "${flag_debug}" == true; then
+            printf -- \
+                "%s: %s: DEBUG: Beta version(%s) is newer than the versions in the stabler channels(if available), and is newer than the one shipped in the Snap Store's beta channel(if available), beta version will be built.\\n" \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_beta_version}" \
+                1>&2
+        fi
+        release_type_to_build=beta
+    # Case: Build development snapshot when:
+    #
+    # * All other versions are built
+    else
+        if test "${flag_debug}" == true; then
+            printf -- \
+                "%s: %s: DEBUG: All other versions are on the Snap Store, development snapshot will be built.\\n" \
+                "${script_name}" \
+                "${FUNCNAME[0]}" \
+                "${last_beta_version}" \
+                "${last_beta_version_on_the_snap_store}" \
+                1>&2
+        fi
+        release_type_to_build=development-snapshot
+    fi
+
+    printf \
+        '%s' \
+        "${release_type_to_build}"
 }
 
 # Query snap version for specific channel, we use the Snap Store API
