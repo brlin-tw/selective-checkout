@@ -320,9 +320,16 @@ init(){
             : # do nothing
         ;;
         release)
-            vcs_checkout_tag \
-                "${PWD}" \
-                "${selected_release_tag}"
+            if test "${flag_dry_run}" == true; then
+                printf -- \
+                    '%s: Info: Would check out "%s" tag.\n' \
+		    "${script_name}" \
+		    "${selected_release_tag}"
+            else
+                vcs_checkout_tag \
+                    "${PWD}" \
+                    "${selected_release_tag}"
+            fi
         ;;
         *)
             printf -- \
