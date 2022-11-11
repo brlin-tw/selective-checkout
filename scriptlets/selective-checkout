@@ -1910,6 +1910,8 @@ vcs_describe_revision(){
     esac
 }
 
+# Check whether a version string is newer than the other version string
+# identical version is considered "not newer"
 version_former_is_greater_than_latter(){
     if test $# -ne 2; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
@@ -1919,8 +1921,11 @@ version_former_is_greater_than_latter(){
     local -r former="${1}"; shift
     local -r latter="${1}"; shift
 
-    local newer_version
+    if test "${former}" = "${latter}"; then
+        return 1
+    fi
 
+    local newer_version
     newer_version="$(
         printf \
             -- \
@@ -1929,6 +1934,7 @@ version_former_is_greater_than_latter(){
             "${latter}" \
             | sort \
                 --version-sort \
+                --reverse \
             | head \
                 --lines=1
     )"
