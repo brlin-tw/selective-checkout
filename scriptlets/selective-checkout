@@ -1022,7 +1022,7 @@ determine_which_version_to_build(){
     # Case: --force-snapshot is specified
     if test "${flag_force_snapshot}" == true; then
         printf -- \
-            '%s: %s: DEBUG: The --force-snapshot command option is specified, stable release will be built.\n' \
+            '%s: %s: DEBUG: The --force-snapshot command option is specified, development snapshot will be built.\n' \
             "${script_name}" \
             "${FUNCNAME[0]}" \
             1>&2
