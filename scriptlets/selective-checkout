@@ -1049,9 +1049,9 @@ determine_which_version_to_build(){
         release_type_to_build=stable
     # Case: Build the stable version when:
     #
-    # * The stable version is available
-    # * AND there's no snap available in the stable channel of the Snap
-    #   Store
+    # The stable version is available
+    #   AND there's no snap available in the stable channel of the Snap
+    #       Store
     elif test -n "${last_stable_version}" \
         && test -z "${last_stable_version_on_the_snap_store}"; then
         if test "${flag_debug}" == true; then
