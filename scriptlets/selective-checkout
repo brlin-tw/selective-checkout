@@ -1030,7 +1030,7 @@ determine_which_version_to_build(){
     # Case: Build the stable version when:
     #
     # --force-stable command-line option is specified
-    #   AND there is stable release version to build on
+    #   AND There is stable release version to build on
     elif test "${flag_force_stable}" == true; then
         if test -z "${last_stable_version}"; then
             printf -- \
@@ -1050,7 +1050,7 @@ determine_which_version_to_build(){
     # Case: Build the stable version when:
     #
     # The stable version is available
-    #   AND there's no snap available in the stable channel of the Snap
+    #   AND There's no snap available in the stable channel of the Snap
     #       Store
     elif test -n "${last_stable_version}" \
         && test -z "${last_stable_version_on_the_snap_store}"; then
@@ -1065,8 +1065,8 @@ determine_which_version_to_build(){
     # Case: Build the stable version when:
     #
     # The stable version is available
-    #   AND there is snap on the stable channel of the Snap Store
-    #   AND the stable version is newer than the one on the stable
+    #   AND There is snap on the stable channel of the Snap Store
+    #   AND The stable version is newer than the one on the stable
     #       channel of the snap store
     elif test -n "${last_stable_version}" \
         && test -n "${last_stable_version_on_the_snap_store}" \
@@ -1103,14 +1103,14 @@ determine_which_version_to_build(){
     # Case: Build release candidate version when:
     #
     # Release candidate version is available
-    #   AND the latest stable version is available on the Snap Store
-    #   AND the release candidate version is newer than the version on
+    #   AND The latest stable version is available on the Snap Store
+    #   AND The release candidate version is newer than the version on
     #       the Snap Store's stable channel
     #   AND (
-    #     there's no release in the Snap Store's candidate channel
+    #     There's no release in the Snap Store's candidate channel
     #       OR (
-    #         there's release in the Snap Store's candidate channel
-    #           AND the release candidate version is newer than the
+    #         There's release in the Snap Store's candidate channel
+    #           AND The release candidate version is newer than the
     #               version in the Snap Store's candidate channel
     #       )
     #   )
@@ -1141,11 +1141,11 @@ determine_which_version_to_build(){
     # Case: Build release candidate version when:
     #
     # The release candidate version is available
-    #   AND there's snap on the Snap Store's candidate channel
-    #   AND there's snap on the Snap Store's stable channel
-    #   AND the release candidate version is newer than the version on
+    #   AND There's snap on the Snap Store's candidate channel
+    #   AND There's snap on the Snap Store's stable channel
+    #   AND The release candidate version is newer than the version on
     #       the Snap Store's candidate channel
-    #   AND the release candidate version is newer than the stable
+    #   AND The release candidate version is newer than the stable
     #       version on the Snap Store
     elif test -n "${last_release_candidate_version}" \
         && test -n "${last_release_candidate_version_on_the_snap_store}" \
@@ -1169,9 +1169,9 @@ determine_which_version_to_build(){
     # Case: Build beta version when:
     #
     # The beta version is available
-    #   AND there's no snap on the stable channel of the Snap Store
-    #   AND there's no snap on the candidate channel of the Snap Store
-    #   AND there's no snap on the beta channel of the Snap Store
+    #   AND There's no snap on the stable channel of the Snap Store
+    #   AND There's no snap on the candidate channel of the Snap Store
+    #   AND There's no snap on the beta channel of the Snap Store
     elif test -n "${last_beta_version}" \
         && test -z "${last_stable_version_on_the_snap_store}" \
         && test -z "${last_release_candidate_version_on_the_snap_store}" \
@@ -1188,10 +1188,10 @@ determine_which_version_to_build(){
     # Case: Build beta version when:
     #
     # The beta version is available
-    #   AND there's NO snap on the stable channel of the Snap Store
-    #   AND there's NO snap on the candidate channel of the Snap Store
-    #   AND there's snap on the beta channel of the Snap Store
-    #   AND the beta version is newer than the version on the beta
+    #   AND There's NO snap on the stable channel of the Snap Store
+    #   AND There's NO snap on the candidate channel of the Snap Store
+    #   AND There's snap on the beta channel of the Snap Store
+    #   AND The beta version is newer than the version on the beta
     #       channel of the Snap Store
     elif test -n "${last_beta_version}" \
         && test -z "${last_stable_version_on_the_snap_store}" \
@@ -1217,7 +1217,7 @@ determine_which_version_to_build(){
     #     There's NO snap on the stable channel of the Snap Store
     #       OR (
     #        There's snap on the stable channel of the Snap Store
-    #          AND the beta version is newer than the stable version on
+    #          AND The beta version is newer than the stable version on
     #              the Snap Store
     #     )
     #   )
@@ -1225,7 +1225,7 @@ determine_which_version_to_build(){
     #     There's NO snap on the candidate channel of the Snap Store
     #       OR (
     #       There's snap on the candidate channel of the Snap Store
-    #         AND the beta version is newer than the candidate version
+    #         AND The beta version is newer than the candidate version
     #             on the Snap Store
     #     )
     #   )
@@ -1233,7 +1233,7 @@ determine_which_version_to_build(){
     #     There's NO snap on the beta channel of the Snap Store
     #       OR (
     #         There's snap on the beta channel of the Snap Store
-    #         AND the beta version is newer than the beta version on
+    #         AND The beta version is newer than the beta version on
     #             the Snap Store
     #       )
     #   )
