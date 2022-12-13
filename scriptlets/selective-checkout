@@ -7,7 +7,9 @@
 # infrastructure only supports build on code push (but not new tagged
 # releases) at this time.
 # https://forum.snapcraft.io/t/selective-checkout-check-out-the-tagged-release-revision-if-it-isnt-promoted-to-the-stable-channel/10617
-# 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com> © 2020, 2022
+#
+# Copyright 2020, 2022 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com>
+# SPDX-License-Identifier: CC-BY-SA-4.0
 
 SELECTIVE_CHECKOUT_DEBUG="${SELECTIVE_CHECKOUT_DEBUG:-false}"
 
