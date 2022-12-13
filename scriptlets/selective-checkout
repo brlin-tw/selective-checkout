@@ -1250,7 +1250,7 @@ vcs_detect(){
 
 # Ensure depending software is available before using them
 vcs_check_runtime_dependencies(){
-    if test $# -ne 2; then
+    if test $# -ne 1; then
         printf 'FATAL: %s: Parameter quantity mismatch.\n' "${FUNCNAME[0]}" >&2
         exit 1
     fi
