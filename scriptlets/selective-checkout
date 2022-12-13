@@ -313,8 +313,8 @@ init(){
             if test "${flag_dry_run}" == true; then
                 printf -- \
                     '%s: Info: Would check out "%s" tag.\n' \
-		    "${script_name}" \
-		    "${selected_release_tag}"
+                    "${script_name}" \
+                    "${selected_release_tag}"
             else
                 vcs_checkout_tag \
                     "${PWD}" \
