@@ -428,6 +428,14 @@ determining_runtime_parameters(){
                     fi
                 ;;
                 # Enable execution tracing
+                --debug)
+                    printf -- \
+                        '%s: %s: Warning: The --debug command option is deprecated, set the SELECTIVE_CHECKOUT_DEBUG environment variable to "true" for a better debugging experience.\n' \
+                        "${SCRIPT_NAME}" \
+                        "${FUNCNAME[0]}" \
+                        >&2
+                    export SELECTIVE_CHECKOUT_DEBUG=true
+                ;;
                 --debug-tracing)
                     # Indirect access
                     # shellcheck disable=SC2034
