@@ -806,8 +806,7 @@ determine_stable_release_details(){
             snap_query_version \
                 "${SNAPCRAFT_PROJECT_NAME}" \
                 stable \
-                "${snap_version_postfix_seperator}" \
-                "${SELECTIVE_CHECKOUT_DEBUG}"
+                "${snap_version_postfix_seperator}"
         )"
         if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
