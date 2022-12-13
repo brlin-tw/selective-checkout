@@ -7,7 +7,9 @@
 # infrastructure only supports build on code push (but not new tagged
 # releases) at this time.
 # https://forum.snapcraft.io/t/selective-checkout-check-out-the-tagged-release-revision-if-it-isnt-promoted-to-the-stable-channel/10617
-# 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com> © 2020
+# 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com> © 2020, 2022
+
+SELECTIVE_CHECKOUT_DEBUG="${SELECTIVE_CHECKOUT_DEBUG:-false}"
 
 set \
     -o errexit \
@@ -42,6 +44,7 @@ init(){
     )"
     script_filename="${script##*/}"
     script_name="${script_filename%%.*}"
+    export SCRIPT_NAME="${script_name}"
 
     # checkout_mode:
     # - snapshot: Build as-is
@@ -54,7 +57,6 @@ init(){
         checkout_mode \
         flag_append_packaging_version=false \
         flag_dry_run=false \
-        flag_debug=false \
         flag_debug_tracing=false \
         flag_force_snapshot=false \
         flag_force_stable=false \
@@ -73,10 +75,8 @@ init(){
         upstream_version
 
     determining_runtime_parameters \
-        "${script_name}" \
         flag_append_packaging_version \
         tag_pattern_beta \
-        flag_debug \
         flag_debug_tracing \
         flag_dry_run \
         flag_force_snapshot \
@@ -97,7 +97,6 @@ init(){
     fi
 
     vcs_check_runtime_dependencies \
-        "${script_name}" \
         "${PWD}"
 
     if test "${flag_force_snapshot}" = true; then
@@ -111,7 +110,6 @@ init(){
             "${script_name}"
         checkout_mode=snapshot
     elif vcs_is_dirty \
-        "${script_name}" \
         "${PWD}"; then
         # If tracked files are modified
         # or staging area not empty
@@ -176,7 +174,6 @@ init(){
             '%s: INFO: Determining normalized release version strings.\n' \
             "${script_name}"
         determine_normalized_release_version_string \
-            "${script_name}" \
             map_of_tag_to_normalized_version \
             "${all_release_tags[@]}"
 
@@ -184,7 +181,6 @@ init(){
             '%s: INFO: Detecting stable releases...\n' \
             "${script_name}"
         determine_stable_release_details \
-            "${script_name}" \
             tag_pattern_stable \
             "${tag_pattern_release_candidate}" \
             "${tag_pattern_beta}" \
@@ -193,33 +189,28 @@ init(){
             last_stable_version_on_the_snap_store \
             "${snap_version_postfix_seperator}" \
             "${flag_force_stable}" \
-            "${flag_debug}" \
             "${all_release_tags[@]}"
 
         printf -- \
             '%s: INFO: Detecting release candidate releases...\n' \
             "${script_name}"
         determine_release_candidate_release_details \
-            "${script_name}" \
             "${tag_pattern_release_candidate}" \
             last_release_candidate_tag \
             last_release_candidate_version \
             last_release_candidate_version_on_the_snap_store \
             "${snap_version_postfix_seperator}" \
-            "${flag_debug}" \
             "${all_release_tags[@]}"
 
         printf -- \
             '%s: INFO: Detecting beta releases...\n' \
             "${script_name}"
         determine_beta_release_details \
-            "${script_name}" \
             "${tag_pattern_beta}" \
             last_beta_tag \
             last_beta_version \
             last_beta_version_on_the_snap_store \
             "${snap_version_postfix_seperator}" \
-            "${flag_debug}" \
             "${all_release_tags[@]}"
 
         local \
@@ -228,7 +219,6 @@ init(){
             selected_snap_channel_version
         release_type_to_build="$(
             determine_which_version_to_build \
-                "${script_name}" \
                 "${last_stable_tag}" \
                 "${last_stable_version}" \
                 "${last_stable_version_on_the_snap_store}" \
@@ -385,10 +375,8 @@ init(){
 }
 
 determining_runtime_parameters(){
-    local script_name="${1}"; shift
     local -n flag_append_packaging_version_ref="${1}"; shift
     local -n tag_pattern_beta_ref="${1}"; shift
-    local -n flag_debug_ref="${1}"; shift
     local -n flag_debug_tracing_ref="${1}"; shift
     local -n flag_dry_run_ref="${1}"; shift
     local -n flag_force_snapshot_ref="${1}"; shift
@@ -428,7 +416,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --beta-tag-pattern requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -438,12 +426,6 @@ determining_runtime_parameters(){
                         tag_pattern_beta_ref="${2}"
                         shift 1
                     fi
-                ;;
-                # Enable debug
-                --debug)
-                    # Indirect access
-                    # shellcheck disable=SC2034
-                    flag_debug_ref=true
                 ;;
                 # Enable execution tracing
                 --debug-tracing)
@@ -482,7 +464,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --packaging-dirty-marker-postfix requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -507,7 +489,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --packaging-revision-minimal-length requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -532,7 +514,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --release-candidate-tag-pattern requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -557,7 +539,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --release-tag-pattern requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -583,7 +565,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --release-tag-prefix requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -611,7 +593,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --snap-postfix-seperator requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -636,7 +618,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --stable-tag-pattern requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -661,7 +643,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --upstream-dirty-marker-postfix requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -686,7 +668,7 @@ determining_runtime_parameters(){
                         if test "${#}" -eq 0; then
                             printf -- \
                                 '%s: %s: Error: --upstream-revision-minimal-length requires one argument.\n' \
-                                "${script_name}" \
+                                "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
                             exit 1
@@ -700,7 +682,7 @@ determining_runtime_parameters(){
                 *)
                     printf -- \
                         '%s: %s: Error: Invalid command-line argument "%s".\n' \
-                        "${script_name}" \
+                        "${SCRIPT_NAME}" \
                         "${FUNCNAME[0]}" \
                         "${1}" \
                         >&2
@@ -720,16 +702,15 @@ normalize_version(){
 }
 
 determine_normalized_release_version_string(){
-    local script_name="${1}"; shift
     local -n map_of_tag_to_normalized_version_ref="${1}"; shift
     local -a all_release_tags=("${@}"); set --
 
     local normalized_release_version
     for tag in "${all_release_tags[@]}"; do
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: %s: DEBUG: Found release tag: %s\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${tag}" \
                 1>&2
@@ -738,10 +719,10 @@ determine_normalized_release_version_string(){
             normalize_version <<< "${tag}"
         )"
 
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: %s: DEBUG: Normalized release version: %s\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${normalized_release_version}" \
                 1>&2
@@ -756,7 +737,6 @@ determine_normalized_release_version_string(){
 }
 
 determine_stable_release_details(){
-    local script_name="${1}"; shift
     # Indirection
     # shellcheck disable=SC2034
     local -n tag_pattern_stable_ref="${1}"; shift
@@ -767,7 +747,6 @@ determine_stable_release_details(){
     local -n last_stable_version_on_the_snap_store_ref="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
     local flag_force_stable="${1}"; shift
-    local flag_debug="${1}"; shift
     local -a all_release_tags=("${@}"); set --
 
     local stable_tag_pattern_grep_opts
@@ -804,20 +783,20 @@ determine_stable_release_details(){
                 | tail --lines=1
 
         )"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: %s: DEBUG: Last stable release tag determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${last_stable_tag_ref}" \
                 1>&2
         fi
 
         last_stable_version_ref="${map_of_tag_to_normalized_version["${last_stable_tag}"]}"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: %s: DEBUG: Last stable version determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${last_stable_version_ref}" \
                 1>&2
@@ -825,16 +804,15 @@ determine_stable_release_details(){
 
         last_stable_version_on_the_snap_store_ref="$(
             snap_query_version \
-                "${script_name}" \
                 "${SNAPCRAFT_PROJECT_NAME}" \
                 stable \
                 "${snap_version_postfix_seperator}" \
-                "${flag_debug}"
+                "${SELECTIVE_CHECKOUT_DEBUG}"
         )"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: %s: DEBUG: Last stable version on the snap store determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${last_stable_version_on_the_snap_store_ref}" \
                 1>&2
@@ -846,13 +824,11 @@ determine_stable_release_details(){
 }
 
 determine_release_candidate_release_details(){
-    local script_name="${1}"; shift
     local tag_pattern_release_candidate="${1}"; shift
     local -n last_release_candidate_tag_ref="${1}"; shift
     local -n last_release_candidate_version_ref="${1}"; shift
     local -n last_release_candidate_version_on_the_snap_store_ref="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
-    local flag_debug="${1}"; shift
     local -a all_release_tags=("${@}"); set --
 
     local -a release_candidate_tags
@@ -867,10 +843,10 @@ determine_release_candidate_release_details(){
     )
 
     if test "${#release_candidate_tags[@]}" -eq 0; then
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: No release candidate release tags found.\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 1>&2
         fi
         last_release_candidate_tag_ref=
@@ -886,35 +862,33 @@ determine_release_candidate_release_details(){
                 | sort --version-sort \
                 | tail --lines=1
         )"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: Last release candidate release tag determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${last_release_candidate_tag_ref}" \
                 1>&2
         fi
 
         last_release_candidate_version_ref="${map_of_tag_to_normalized_version["${last_release_candidate_tag_ref}"]}"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: Last release candidate version determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${last_release_candidate_version_ref}" \
                 1>&2
         fi
 
         last_release_candidate_version_on_the_snap_store_ref="$(
             snap_query_version \
-                "${script_name}" \
                 "${SNAPCRAFT_PROJECT_NAME}" \
                 candidate \
-                "${snap_version_postfix_seperator}" \
-                "${flag_debug}"
+                "${snap_version_postfix_seperator}"
         )"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: Last release candidate version on the snap store determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${last_release_candidate_version_on_the_snap_store_ref}" \
                 1>&2
         fi
@@ -924,13 +898,11 @@ determine_release_candidate_release_details(){
 }
 
 determine_beta_release_details(){
-    local script_name="${1}"; shift
     local tag_pattern_beta="${1}"; shift
     local -n last_beta_tag_ref="${1}"; shift
     local -n last_beta_version_ref="${1}"; shift
     local -n last_beta_version_on_the_snap_store_ref="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
-    local flag_debug="${1}"; shift
     local all_release_tags=("${@}"); set --
 
     local -a beta_tags
@@ -945,10 +917,10 @@ determine_beta_release_details(){
     )
 
     if test "${#beta_tags[@]}" -eq 0; then
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: No beta release tags found.\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 1>&2
         fi
         last_beta_tag_ref=
@@ -964,35 +936,33 @@ determine_beta_release_details(){
                 | sort --version-sort \
                 | tail --lines=1
         )"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: Last beta release tag determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${last_beta_tag_ref}" \
                 1>&2
         fi
 
         last_beta_version_ref="${map_of_tag_to_normalized_version["${last_beta_tag_ref}"]}"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: Last beta version determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${last_beta_version_ref}" \
                 1>&2
         fi
 
         last_beta_version_on_the_snap_store="$(
             snap_query_version \
-                "${script_name}" \
                 "${SNAPCRAFT_PROJECT_NAME}" \
                 beta \
-                "${snap_version_postfix_seperator}" \
-                "${flag_debug}"
+                "${snap_version_postfix_seperator}"
         )"
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: DEBUG: Last beta version on the snap store determines to be "%s".\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${last_beta_version_on_the_snap_store_ref}" \
                 1>&2
         fi
@@ -1004,7 +974,6 @@ determine_beta_release_details(){
 }
 
 determine_which_version_to_build(){
-    local script_name="${1}"; shift
     local last_stable_tag="${1}"; shift
     local last_stable_version="${1}"; shift
     local last_stable_version_on_the_snap_store="${1}"; shift
@@ -1023,7 +992,7 @@ determine_which_version_to_build(){
     if test "${flag_force_snapshot}" == true; then
         printf -- \
             '%s: %s: DEBUG: The --force-snapshot command option is specified, development snapshot will be built.\n' \
-            "${script_name}" \
+            "${SCRIPT_NAME}" \
             "${FUNCNAME[0]}" \
             1>&2
         release_type_to_build=development-snapshot
@@ -1035,7 +1004,7 @@ determine_which_version_to_build(){
         if test -z "${last_stable_version}"; then
             printf -- \
                 '%s: %s: Error: The --force-stable command-line option is specified, but no stable versions are found.\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 1>&2
             return 1
@@ -1043,7 +1012,7 @@ determine_which_version_to_build(){
 
         printf -- \
             '%s: %s: DEBUG: The --force-stable command-line option is specified, stable release will be built.\n' \
-            "${script_name}" \
+            "${SCRIPT_NAME}" \
             "${FUNCNAME[0]}" \
             1>&2
         release_type_to_build=stable
@@ -1063,10 +1032,10 @@ determine_which_version_to_build(){
                 "${last_stable_version}" \
                 "${last_stable_version_on_the_snap_store}"
         }; then
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 '%s: %s: DEBUG: Stable version(%s) is newer than the one on the Snap Store(%s), stable release will be built.\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${last_stable_version}" \
                 "${last_stable_version_on_the_snap_store:-none}" \
@@ -1098,10 +1067,10 @@ determine_which_version_to_build(){
                     "${last_release_candidate_version}" \
                     "${last_release_candidate_version_on_the_snap_store}"
         }; then
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 "%s: %s: DEBUG: Release candidate version(%s) is not on the Snap Store's candidate channel and is newer than the version on the stable channel(%s), release candidate version will be built.\\n" \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${last_release_candidate_version}" \
                 "${last_stable_version_on_the_snap_store:-none}" \
@@ -1143,10 +1112,10 @@ determine_which_version_to_build(){
                     "${last_beta_version}" \
                     "${last_beta_version_on_the_snap_store}"
         }; then
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 "%s: %s: DEBUG: Beta version(%s) is newer than the versions in the stabler channels(stable(%s), candidate(%s)), and is newer than the one shipped in the Snap Store's beta channel(%s), beta version will be built.\\n" \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${last_beta_version}" \
                 "${last_stable_version_on_the_snap_store:-none}" \
@@ -1159,10 +1128,10 @@ determine_which_version_to_build(){
     #
     # All other versions are built
     else
-        if test "${flag_debug}" == true; then
+        if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
             printf -- \
                 "%s: %s: DEBUG: All other versions are on the Snap Store(stable(%s), candidate(%s), beta(%s)), development snapshot will be built.\\n" \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 "${last_stable_version_on_the_snap_store:-none}" \
                 "${last_release_candidate_version_on_the_snap_store:-none}" \
@@ -1188,21 +1157,19 @@ snap_query_version(){
     fi
 
     # positional parameters
-    local script_name="${1}"; shift
     local snap_identifier="${1}"; shift
     local release_channel="${1}"; shift
     local snap_version_postfix_seperator="${1}"; shift
-    local flag_debug="${1}"; shift
 
     snap_arch="${SNAP_ARCH:-amd64}"
 
     local snap_version_in_release_channel
     local info_store_api_call_response
 
-    if test "${flag_debug}" == true; then
+    if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
         printf -- \
             '%s: %s: DEBUG: Checking what snap revisions are available for the %s snap at the %s release channel...\n' \
-            "${script_name}" \
+            "${SCRIPT_NAME}" \
             "${FUNCNAME[0]}" \
             "${snap_identifier}" \
             "${release_channel}" \
@@ -1219,7 +1186,7 @@ snap_query_version(){
         )"; then
         printf \
             '%s: %s: Error: Unable to call the Snap Store info API to retrieve snap revision info: %s\n' \
-            "${script_name}" \
+            "${SCRIPT_NAME}" \
             "${FUNCNAME[0]}" \
             "${info_store_api_call_response}" \
             1>&2
@@ -1238,7 +1205,7 @@ snap_query_version(){
         )"; then
         printf \
             '%s: %s: Error: Unable to query the snap version from the store info API response: %s\n' \
-            "${script_name}" \
+            "${SCRIPT_NAME}" \
             "${FUNCNAME[0]}" \
             "${snap_version_in_release_channel}" \
             1>&2
@@ -1248,10 +1215,10 @@ snap_query_version(){
         # No snaps available in the channel
         return 0
     fi
-    if test "${flag_debug}" == true; then
+    if test "${SELECTIVE_CHECKOUT_DEBUG}" == true; then
         printf \
             '%s: %s: DEBUG: Snap version determined to be: "%s".\n' \
-            "${script_name}" \
+            "${SCRIPT_NAME}" \
             "${FUNCNAME[0]}" \
             "${snap_version_in_release_channel}" \
             1>&2
@@ -1288,7 +1255,6 @@ vcs_check_runtime_dependencies(){
         exit 1
     fi
 
-    local script_name="${1}"; shift 1
     local -r source_tree_root_dir="${1}"; shift 1
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
@@ -1298,7 +1264,7 @@ vcs_check_runtime_dependencies(){
                 # shellcheck disable=SC2016
                 printf -- \
                     '%s: %s: Error: `git` command not found in the command search PATHs.\n' \
-                    "${script_name}" \
+                    "${SCRIPT_NAME}" \
                     "${FUNCNAME[0]}" \
                     >&2
                 return 1
@@ -1310,7 +1276,7 @@ vcs_check_runtime_dependencies(){
                 # shellcheck disable=SC2016
                 printf -- \
                     '%s: %s: Error: `hg` command not found in the command search PATHs.\n' \
-                    "${script_name}" \
+                    "${SCRIPT_NAME}" \
                     "${FUNCNAME[0]}" \
                     >&2
                 return 1
@@ -1322,7 +1288,7 @@ vcs_check_runtime_dependencies(){
                 # shellcheck disable=SC2016
                 printf -- \
                     '%s: %s: Error: `svn` command not found in the command search PATHs.\n' \
-                    "${script_name}" \
+                    "${SCRIPT_NAME}" \
                     "${FUNCNAME[0]}" \
                     >&2
                 return 1
@@ -1331,7 +1297,7 @@ vcs_check_runtime_dependencies(){
         *)
             printf -- \
                 '%s: %s: Warning: Unknown VCS type, assuming none.\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 >&2
             return 0
@@ -1345,7 +1311,6 @@ vcs_is_dirty(){
         exit 1
     fi
 
-    local script_name="${1}"; shift 1
     local -r source_tree_root_dir="${1}"; shift 1
 
     case "$(vcs_detect "${source_tree_root_dir}")" in
@@ -1394,7 +1359,7 @@ vcs_is_dirty(){
         *)
             printf -- \
                 '%s: %s: Warning: Unknown VCS type, assuming dirty.\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 >&2
             return 0
@@ -1737,7 +1702,6 @@ vcs_describe_revision(){
         exit 1
     fi
 
-    local script_name="${1}"; shift 1
     local -r source_tree_root_dir="${1}"; shift 1
     local -r revision_identifier_length_minimum="${1}"; shift 1
     local -r dirty_postfix="${1}"; shift 1
@@ -1769,7 +1733,7 @@ vcs_describe_revision(){
                 )"
 
                 if vcs_is_dirty \
-                    "${script_name}" \
+                    "${SCRIPT_NAME}" \
                     "${source_tree_root_dir}"; then
                     hg_revision+="${dirty_postfix}"
                 fi
@@ -1784,7 +1748,7 @@ vcs_describe_revision(){
                     "${source_tree_root_dir}"
 
             if vcs_is_dirty \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${source_tree_root_dir}"; then
                 printf -- %s "${dirty_postfix}"
             fi
@@ -1792,7 +1756,7 @@ vcs_describe_revision(){
         *)
             printf -- \
                 '%s: %s: Warning: Unknown VCS type.\n' \
-                "${script_name}" \
+                "${SCRIPT_NAME}" \
                 "${FUNCNAME[0]}" \
                 >&2
             printf unknown
