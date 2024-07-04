@@ -7,7 +7,7 @@
 # https://github.com/the-common/gitignore-templates
 #
 # Copyright 2022 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com>
-# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-License-Identifier: CC-BY-SA-4.0 OR LicenseRef-Apache-2.0-If-Not-Used-In-Template-Projects
 
 # Don't track regular Unix hidden files
 .*
@@ -37,6 +37,9 @@
 # Do track REUSE configuration files
 # https://reuse.software/
 !.reuse/
+
+# Do track GitLab CI configuration file
+!/.gitlab-ci.yml
 
 # Don't track common backup filename extensions
 *~
@@ -82,3 +85,6 @@
 
 # Don't track GNU gettext machine-readable message catalogs
 *.mo
+
+# Don't track continuous integration virtual environments
+/continuous-integration/venv/

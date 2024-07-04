@@ -1,10 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: selective-checkout
 Upstream-Contact: 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com>
-Source: https://github.com/brlin-tw/selective-checkout
+Source: https://gitlab.com/the-common/project-template
 
 Files:
- *README.md
- */README.md
+    *README.md
+    */README.md
 Copyright: 2020,2022 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com>
-License: CC-BY-SA-4.0+
+License: CC-BY-SA-4.0+ OR LicenseRef-Apache-2.0-If-Not-Used-In-Template-Projects
