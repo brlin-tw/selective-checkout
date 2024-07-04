@@ -63,25 +63,28 @@ Refer to the following forum topic for a possible solution proposal to this prob
 
 ## How to use
 
+1. Download the release package from [the project's Releases page](https://gitlab.com/brlin/selective-checkout/-/releases).
+1. Extract the release package.
+1. Copy [the scriptlets/selective-checkout scriptlet file](scriptlets/selective-checkout) to your project's source tree.  The recommended location to store the file is /snap/local/scriptlets.
+
+   **NOTE:** It is recommended to document the version of the scriptlet somewhere(e.g. in the commit message) to track its version.
 1. In the top-level snap metadata, DO NOT SET the `version` key, instead, set the `adopt-info` key with the main component part's name as the value.
 
     ```yaml
     #version:
-    adopt-info: _part_name_
+    adopt-info: your-main-part
     ```
 
-1. Merge the following part definition:
+1. In your main component part, merge the following part definition:
 
    ```yaml
    parts:
-     # Check out the tagged release revision if it isn't promoted to the stable channel
-     # https://forum.snapcraft.io/t/selective-checkout-check-out-the-tagged-release-revision-if-it-isnt-promoted-to-the-stable-channel/10617
-     selective-checkout:
-       source: https://github.com/brlin-tw/selective-checkout.git
-       source-tag: v3.0.0
-       plugin: dump
+     your-main-part:
+       # If you specify the `source-depth` property should be deep enough to include a tagged release
+       #source-depth: 500
+
        build-packages:
-         # Scriptlet dependencies
+         # selective-checkout dependencies
          - curl
          - jq
          - sed
@@ -90,29 +93,32 @@ Refer to the following forum topic for a possible solution proposal to this prob
          #- git
          #- mercurial
          #- subversion
-       stage:
-         - scriptlets/selective-checkout
-       prime:
-         - -*
-   ```
-
-1. Merge the following keys to the main component part:
-
-   ```yaml
-   parts:
-     _part_name_:
-       after:
-         - selective-checkout
-       # Either the root source tree with a .git repository
-       #source: .
-       # or an external repository
-       #source: https://example.com/project/.git
-       # If you specify the `source-depth` property should be deep enough to include a tagged release
-       #source-depth: 500
        override-pull: |
-         snapcraftctl pull
+         set -o nounset
 
-         "${SNAPCRAFT_STAGE}"/scriptlets/selective-checkout
+         # For core22 or newer bases:
+         if ! craftctl default; then
+             printf \
+               'Error: Unable to run the default action of this step.\n' \
+               1>&2
+               exit 2
+         fi
+
+         # For core20 and older bases:
+         if ! snapcraftctl pull; then
+             printf \
+               'Error: Unable to run the default action of this step.\n' \
+               1>&2
+               exit 2
+         fi
+
+         project_dir="${CRAFT_PROJECT_DIR:-"${SNAPCRAFT_PROJECT_DIR}"}"
+         if ! "${project_dir}/scriptlets/selective-checkout"; then
+             printf \
+                 'Error: Unable to run the selective-checkout scriptlet.\n' \
+                 1>&2
+                 exit 2
+         fi
 
          # Do your additional regular stuff
    ```
@@ -240,7 +246,10 @@ Patches welcome!
 
 ## Reference
 
-To be addressed.
+The following materials are referenced during the development of this project:
+
+* [Using the craftctl tool - doc - snapcraft.io](https://forum.snapcraft.io/t/using-the-craftctl-tool/32664)  
+  For the new syntax of customizing the step's behaviors.
 
 ## Licensing
 
