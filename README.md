@@ -230,7 +230,7 @@ Enable debugging messages, supported value: `true` / `false`
 
 [林博仁 Buo-ren, Lin / The selective-checkout override-pull scriptlet · GitLab](https://gitlab.com/brlin/selective-checkout)
 
-## Snaps that are using this stage snap
+## Snaps that are using this scriptlet
 
 * [mikf/gallery-dl: Command-line program to download image-galleries and -collections from several image hosting sites](https://github.com/mikf/gallery-dl) - [patch](https://github.com/mikf/gallery-dl/commit/81d4d49234b04ac72dbf2e531a5d3b0bafc1e47e)
 * [Git : Code : Unofficial Snap Packaging for LÖVE : 林博仁(Buo-ren, Lin)](https://code.launchpad.net/~buo-ren-lin/love-snap) - [patch](https://git.launchpad.net/love-snap/commit/?id=a73c7cc092e77c7eb23656e4e5e21a9e37deae35)
