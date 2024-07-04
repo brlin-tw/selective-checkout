@@ -113,7 +113,7 @@ Refer to the following forum topic for a possible solution proposal to this prob
          fi
 
          project_dir="${CRAFT_PROJECT_DIR:-"${SNAPCRAFT_PROJECT_DIR}"}"
-         if ! "${project_dir}/scriptlets/selective-checkout"; then
+         if ! "${project_dir}/path/to/the/scriptlets/dir/selective-checkout"; then
              printf \
                  'Error: Unable to run the selective-checkout scriptlet.\n' \
                  1>&2
