@@ -250,6 +250,8 @@ The following materials are referenced during the development of this project:
 
 * [Using the craftctl tool - doc - snapcraft.io](https://forum.snapcraft.io/t/using-the-craftctl-tool/32664)  
   For the new syntax of customizing the step's behaviors.
+* [Part "after" changed behavior - snapcraft - snapcraft.io](https://forum.snapcraft.io/t/part-after-changed-behavior/32600/8)  
+  For the new behavior of the `after` part definition stanza in Snapcraft version 7.
 
 ## Licensing
 
