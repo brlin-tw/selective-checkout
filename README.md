@@ -65,7 +65,7 @@ Refer to the following forum topic for a possible solution proposal to this prob
 
 1. Download the release package from [the project's Releases page](https://gitlab.com/brlin/selective-checkout/-/releases).
 1. Extract the release package.
-1. Copy [the scriptlets/selective-checkout scriptlet file](scriptlets/selective-checkout) to your project's source tree.  The recommended location to store the file is /snap/local/scriptlets.
+1. Copy [the scriptlets/selective-checkout scriptlet file](scriptlets/selective-checkout) from the extracted release package files to your project's source tree.  The recommended location to store the file is /snap/local/scriptlets.
 
    **NOTE:** It is recommended to document the version of the scriptlet somewhere(e.g. in the commit message) to track its version.
 1. In the top-level snap metadata, DO NOT SET the `version` key, instead, set the `adopt-info` key with the main component part's name as the value.
