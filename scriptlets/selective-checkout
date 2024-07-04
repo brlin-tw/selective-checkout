@@ -369,8 +369,12 @@ init(){
         "${script_name}" \
         "${snap_version}"
     if test "${flag_dry_run}" = false; then
-        craftctl \
-            set version="${snap_version}"
+        if ! craftctl set version="${snap_version}"; then
+            printf \
+                'Error: Unable to set the snap version string.\n' \
+                1>&2
+            exit 2
+        fi
     fi
     exit 0
 }
