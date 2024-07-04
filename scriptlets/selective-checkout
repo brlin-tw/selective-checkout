@@ -1419,7 +1419,7 @@ vcs_has_release_tags() {
             source_tree_root_url="$(
                 svn info \
                     --show-item url \
-                     "${source_tree_root_dir}"
+                    "${source_tree_root_dir}"
             )"
 
             # Supported source URLs:
@@ -1507,7 +1507,7 @@ vcs_query_release_tags(){
             source_tree_root_url="$(
                 svn info \
                     --show-item url \
-                     "${source_tree_root_dir}"
+                    "${source_tree_root_dir}"
             )"
 
             # Supported source URLs:
@@ -1580,7 +1580,7 @@ vcs_checkout_tag(){
             source_tree_root_url="$(
                 svn info \
                     --show-item url \
-                     "${source_tree_root_dir}"
+                    "${source_tree_root_dir}"
             )"
 
             # Supported source URLs:
@@ -1657,7 +1657,7 @@ vcs_describe_version(){
             source_tree_root_url="$(
                 svn info \
                     --show-item url \
-                     "${source_tree_root_dir}"
+                    "${source_tree_root_dir}"
             )"
 
             # Supported source URLs:
