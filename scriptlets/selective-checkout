@@ -76,7 +76,7 @@ init(){
         snap_version_postfix_seperator=+ \
         upstream_version
 
-    determining_runtime_parameters \
+    if ! determining_runtime_parameters \
         flag_append_packaging_version \
         tag_pattern_beta \
         flag_debug_tracing \
@@ -92,7 +92,12 @@ init(){
         tag_pattern_stable \
         postfix_dirty_marker_upstream \
         revision_minimal_length_upstream \
-        "${@}"
+        "${@}"; then
+        printf \
+            'Error: Error(s) occurred while determining the runtime parameters.\n' \
+            1>&2
+        exit 1
+    fi
 
     if test "${flag_debug_tracing}" = true; then
         set -o xtrace
@@ -433,7 +438,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -489,7 +494,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -514,7 +519,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -539,7 +544,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -564,7 +569,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -590,7 +595,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -618,7 +623,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -643,7 +648,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -668,7 +673,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -693,7 +698,7 @@ determining_runtime_parameters(){
                                 "${SCRIPT_NAME}" \
                                 "${FUNCNAME[0]}" \
                                 >&2
-                            exit 1
+                            return 1
                         fi
                         # Indirect access
                         # shellcheck disable=SC2034
@@ -708,7 +713,7 @@ determining_runtime_parameters(){
                         "${FUNCNAME[0]}" \
                         "${1}" \
                         >&2
-                    exit 1
+                    return 1
                 ;;
             esac
             shift 1
