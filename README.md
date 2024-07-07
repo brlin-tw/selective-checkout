@@ -52,7 +52,9 @@ Refer to the following forum topic for a possible solution proposal to this prob
 
 ## The logic
 
-* The scriptlet will **checkout the latest tagged stable release** and build tagged release snap if the latest tagged release hasn't been promoted to the stable channel (check is based on version-sort)
+* The scriptlet will **checkout the latest tagged stable release** and build tagged release snap if:
+    + The latest tagged release hasn't been promoted to the stable channel (check is based on version-sort)
+    + The snap hasn't been published to the Snap Store
 * The scriptlet will **checkout the latest tagged beta/candidate releases** if they were found and it is version-sortwise more recent than the version shipped in the more stabler channels (for releasing the snap to beta/candidate channels)
 * The scriptlet will **not touch the source tree** and build as-is if
     + A VCS repository is not found (will set the snap version to `unknown`)
