@@ -161,13 +161,17 @@ init(){
             [development-snapshot]=edge
         )
 
-        if ! test -v SNAPCRAFT_PROJECT_NAME; then
+        if ! {
+            test -v CRAFT_PROJECT_NAME \
+            || test -v SNAPCRAFT_PROJECT_NAME
+            }; then
             printf -- \
-                "%s: Error: This script requires SNAPCRAFT_PROJECT_NAME environment variable set to the snap's identifier.\\n" \
+                "%s: Error: This script requires either the CRAFT_PROJECT_NAME or the SNAPCRAFT_PROJECT_NAME environment variable to be set.\\n" \
                 "${script_name}" \
                 >&2
             exit 1
         fi
+        local project_name="${CRAFT_PROJECT_NAME:-"${SNAPCRAFT_PROJECT_NAME}"}"
 
         mapfile \
             -t all_release_tags \
@@ -176,6 +180,18 @@ init(){
                 "${PWD}" \
                 "${tag_pattern_release}"
         )
+
+        if ! {
+            test -v CRAFT_PROJECT_DIR \
+            || test -v SNAPCRAFT_PROJECT_DIR
+            }; then
+            printf -- \
+                "%s: Error: This script requires either the CRAFT_PROJECT_DIR or the SNAPCRAFT_PROJECT_DIR environment variable to be set.\\n" \
+                "${script_name}" \
+                >&2
+            exit 1
+        fi
+        project_dir="${CRAFT_PROJECT_DIR:-"${SNAPCRAFT_PROJECT_DIR}"}"
 
         printf -- \
             '%s: INFO: Determining normalized release version strings.\n' \
@@ -352,12 +368,13 @@ init(){
     if test "${flag_append_packaging_version}" = true; then
         packaging_revision="$(
             vcs_describe_revision \
-                "${SNAPCRAFT_PROJECT_DIR}" \
+                "${project_dir}" \
                 "${revision_minimal_length_packaging}" \
                 "${postfix_dirty_marker_packaging}"
         )"
         snap_version="${upstream_version}+pkg-${packaging_revision}"
         unset \
+            project_dir \
             packaging_revision \
             postfix_dirty_marker_packaging \
             revision_minimal_length_packaging
@@ -831,7 +848,7 @@ determine_stable_release_details(){
 
         last_stable_version_on_the_snap_store_ref="$(
             snap_query_version \
-                "${CRAFT_PROJECT_NAME:-"${SNAPCRAFT_PROJECT_NAME:-'**PROJECT_NAME_NOT_SET**'}"}" \
+                "${project_name}" \
                 stable \
                 "${snap_version_postfix_seperator}"
         )"
@@ -907,7 +924,7 @@ determine_release_candidate_release_details(){
 
         last_release_candidate_version_on_the_snap_store_ref="$(
             snap_query_version \
-                "${SNAPCRAFT_PROJECT_NAME}" \
+                "${project_name}" \
                 candidate \
                 "${snap_version_postfix_seperator}"
         )"
@@ -981,7 +998,7 @@ determine_beta_release_details(){
 
         last_beta_version_on_the_snap_store="$(
             snap_query_version \
-                "${SNAPCRAFT_PROJECT_NAME}" \
+                "${project_name}" \
                 beta \
                 "${snap_version_postfix_seperator}"
         )"
