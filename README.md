@@ -50,6 +50,14 @@ Refer to the following forum topic for a possible solution proposal to this prob
 
 [Proposal: Allow overriding the source-tag property for an one-time build in the build infrastructure - snapcraft - snapcraft.io](https://forum.snapcraft.io/t/proposal-allow-overriding-the-source-tag-property-for-an-one-time-build-in-the-build-infrastructure/10303)
 
+## The logic
+
+* The scriptlet will **checkout the latest tagged stable release** and build tagged release snap if the latest tagged release hasn't been promoted to the stable channel (check is based on version-sort)
+* The scriptlet will **checkout the latest tagged beta/candidate releases** if they were found and it is version-sortwise more recent than the version shipped in the more stabler channels (for releasing the snap to beta/candidate channels)
+* The scriptlet will **not touch the source tree** and build as-is if
+    + A VCS repository is not found (will set the snap version to `unknown`)
+    + Working tree is dirty(building test snaps)
+
 ## Prerequisites
 
 * Your snap recipe is using the `base` keyword (i.e. not the legacy snapcraft syntax)
@@ -122,14 +130,6 @@ Refer to the following forum topic for a possible solution proposal to this prob
 
          # Do your additional regular stuff
    ```
-
-## The logic
-
-* The scriptlet will **checkout the latest tagged stable release** and build tagged release snap if the latest tagged release hasn't been promoted to the stable channel (check is based on version-sort)
-* The scriptlet will **checkout the latest tagged beta/candidate releases** if they were found and it is version-sortwise more recent than the version shipped in the more stabler channels (for releasing the snap to beta/candidate channels)
-* The scriptlet will **not touch the source tree** and build as-is if
-    + A VCS repository is not found (will set the snap version to `unknown`)
-    + Working tree is dirty(building test snaps)
 
 ## Supported command-line options
 
