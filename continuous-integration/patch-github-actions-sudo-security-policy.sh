@@ -9,7 +9,7 @@
 #   https://www.sudo.ws/docs/man/sudoers.man/#Including_other_files_from_within_sudoers
 #
 # Copyright 2023 林博仁(Buo-ren, Lin) <buo.ren.lin@gmail.com>
-# SPDX-License-Identifier: CC-BY-SA-4.0 OR LicenseRef-Apache-2.0-If-Not-Used-In-Template-Projects
+# SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Configure the interpreter behavior to bail out during problematic
 # situations

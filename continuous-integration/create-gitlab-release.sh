@@ -2,7 +2,7 @@
 # Create GitLab project release
 #
 # Copyright 2023 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com>
-# SPDX-License-Identifier: CC-BY-SA-4.0 OR LicenseRef-Apache-2.0-If-Not-Used-In-Template-Projects
+# SPDX-License-Identifier: CC-BY-SA-4.0
 
 set \
     -o errexit \
