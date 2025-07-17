@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generate the project build artifacts
 #
-# Copyright 2023 林博仁(Buo-ren, Lin) <buo.ren.lin@gmail.com>
+# Copyright 2024 林博仁(Buo-ren Lin) <buo.ren.lin@gmail.com>
 # SPDX-License-Identifier: CC-BY-SA-4.0
 set \
     -o errexit \
@@ -20,6 +20,8 @@ if ! script="$(
 fi
 
 script_dir="${script%/*}"
+project_dir="${script_dir%/*}"
+project_dirname="${project_dir##*/}"
 
 if ! test -e "${script_dir}/venv"; then
     printf \
@@ -55,6 +57,15 @@ if ! pip show git-archive-all &>/dev/null; then
 fi
 
 printf \
+    'Info: Determining the build datestamp...\n'
+if ! datestamp="$(date +%Y%m%d-%H%M%S)"; then
+    printf \
+        'Error: Unable to determine the build datestamp.\n' \
+        1>&2
+    exit 2
+fi
+
+printf \
     'Info: Determining the project version...\n'
 git_describe_opts=(
     --always
@@ -65,16 +76,17 @@ if ! version_describe="$(
     git describe \
         "${git_describe_opts[@]}"
     )"; then
+    version_describe="unknown-${datestamp}"
     printf \
-        'Error: Unable to determine the project version.\n' \
+        'Warning: Unable to determine the project version, will use "%s" as a fallback.\n' \
+        "${version_describe}" \
         1>&2
-    exit 2
 fi
 project_version="${version_describe#v}"
 
 printf \
     'Info: Generating the project archive...\n'
-project_id="${CI_PROJECT_NAME:-"${project_id}"}"
+project_id="${CI_PROJECT_NAME:-"${PROJECT_ID:-"${project_dirname}"}"}"
 release_id="${project_id}-${project_version}"
 git_archive_all_opts=(
     # Add an additional layer of folder for containing the archive

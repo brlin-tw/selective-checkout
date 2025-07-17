@@ -5,7 +5,7 @@
 # * Workflow syntax for GitHub Actions - GitHub Docs
 #   https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
 #
-# Copyright 2023 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com>
+# Copyright 2024 林博仁(Buo-ren Lin) <buo.ren.lin@gmail.com>
 # SPDX-License-Identifier: CC-BY-SA-4.0
 name: Release product and their build aritfacts
 on:
@@ -16,7 +16,11 @@ on:
 jobs:
   release:
     name: Release product and their build aritfacts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
+    permissions:
+      # Allow publishing release packages to Releases
+      contents: write
+      packages: write
     steps:
       - name: Check out content from the Git repository
         uses: actions/checkout@v4
@@ -29,6 +33,10 @@ jobs:
           # WORKAROUND: Adding this option triggers actions/checkout#1467
           #fetch-tags: true
 
+          # Also recursively fetch submodules
+          # WORKAROUND: Adding this option triggers actions/checkout#1959
+          #submodules: true
+
       - name: >-
           WORKAROUND: Fetch tags that points to the revisions
           checked-out(actions/checkout#1467)
@@ -39,6 +47,14 @@ jobs:
             --force \
             --depth=100 \
             --no-recurse-submodules
+
+      - name: >-
+          WORKAROUND: Checkout submodules recursively(actions/checkout#1959)
+        run: |-
+          git submodule update \
+            --init \
+            --recursive \
+            --depth 1
 
       - name: Determine the project identifier
         run: printf "project_id=${GITHUB_REPOSITORY##*/}\\n" >> $GITHUB_ENV
@@ -66,7 +82,7 @@ jobs:
         run: ./continuous-integration/generate-release-description.sh
 
       - name: Publish the release archive to the GitHub Releases
-        uses: softprops/action-gh-release@v0.1.15
+        uses: softprops/action-gh-release@v2
         with:
           name: ${{ env.project_id }} ${{ env.release_version }}
           files: |

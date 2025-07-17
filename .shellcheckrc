@@ -1,0 +1,12 @@
+# ShellCheck configuration file
+#
+# References:
+#
+# * RC FILES · shellcheck/shellcheck.1.md at master · koalaman/shellcheck
+#   https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md#rc-files
+#
+# Copyright 2025 林博仁(Buo-ren Lin) <buo.ren.lin@gmail.com>
+# SPDX-License-Identifier: CC-BY-SA-4.0+
+
+# Allow opening any 'source'd file, even if not specified as input
+external-sources=true

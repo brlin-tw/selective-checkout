@@ -2,7 +2,7 @@
 # Generate release description text to explain the changes between the
 # previous release
 #
-# Copyright 2023 林博仁(Buo-ren, Lin) <Buo.Ren.Lin@gmail.com>
+# Copyright 2024 林博仁(Buo-ren Lin) <buo.ren.lin@gmail.com>
 # SPDX-License-Identifier: CC-BY-SA-4.0
 
 set \
@@ -43,6 +43,9 @@ if test -v CI_COMMIT_TAG; then
     release_tag="${CI_COMMIT_TAG}"
 fi
 
+git_log_opts=(
+    --format='format:* %s (%h) - %an'
+)
 if test "${git_tag_count}" -eq 1; then
     printf \
         'Info: Only one release tag was detected, generating the release description text from the very beginning to the "%s" release tag...\n' \
@@ -104,9 +107,6 @@ else
             "${previous_git_tag}" \
             "${release_tag}" \
             1>&2
-    git_log_opts=(
-        --format='format:* %s (%h) - %an'
-    )
     if ! detailed_changes_markup+="$(
         git log \
             "${git_log_opts[@]}" \
